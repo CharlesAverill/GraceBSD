@@ -4,6 +4,8 @@
 # Delete the target of a failed recipe.
 .DELETE_ON_ERROR:
 
+.DEFAULT_GOAL := all
+
 # This is the name that our final executable will have.
 # Change as needed.
 override OUTPUT := kernel
@@ -254,6 +256,17 @@ ifeq ($(call LD_HAS_FLAG,-no-pie),1)
         -Wl,-no-pie
 endif
 
+# Generated RGB pixel data.
+SPLASH_BMP := ../media/splash.bmp
+SPLASH_HEADER := runtime/generated/splash_data.h
+BMP_CONVERTER := tools/bmp_to_rgb.py
+
+$(SPLASH_HEADER): $(SPLASH_BMP) $(BMP_CONVERTER)
+	mkdir -p "$(dir $@)"
+	python3 $(BMP_CONVERTER) $(SPLASH_BMP) $@
+
+obj/runtime/splash.c.o: $(SPLASH_HEADER)
+
 # Use "find" to glob all *.c, *.S, and *.asm files in the tree and obtain the
 # object and header dependency file names.
 override SRCFILES := $(shell find -L arch runtime freestanding-lgrt/src -type f 2>/dev/null | LC_ALL=C sort)
@@ -288,7 +301,7 @@ $(VARSFILES):
 	@printf '%s\n' '$(subst ','\'',$($(notdir $@)))' > $@
 
 # Link rules for the final executable.
-bin/$(OUTPUT): GNUmakefile obj/CC obj/CFLAGS obj/LDFLAGS arch/x86_64/linker.ld $(OBJ)
+bin/$(OUTPUT): Makefile obj/CC obj/CFLAGS obj/LDFLAGS arch/x86_64/linker.ld $(OBJ)
 	mkdir -p "$(dir $@)"
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJ) -o $@
 
@@ -297,17 +310,17 @@ bin/$(OUTPUT): GNUmakefile obj/CC obj/CFLAGS obj/LDFLAGS arch/x86_64/linker.ld $
 obj/runtime/memory.c.o obj/freestanding-lgrt/src/freestanding-lgrt.c.o: override CFLAGS += -fno-lto
 
 # Compilation rules for *.c files.
-obj/%.c.o: %.c GNUmakefile obj/CC obj/CFLAGS obj/CPPFLAGS
+obj/%.c.o: %.c Makefile obj/CC obj/CFLAGS obj/CPPFLAGS
 	mkdir -p "$(dir $@)"
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 # Compilation rules for *.S files.
-obj/%.S.o: %.S GNUmakefile obj/CC obj/CFLAGS obj/CPPFLAGS
+obj/%.S.o: %.S Makefile obj/CC obj/CFLAGS obj/CPPFLAGS
 	mkdir -p "$(dir $@)"
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 # Compilation rules for *.asm (nasm) files.
-obj/%.asm.o: %.asm GNUmakefile obj/NASMFLAGS
+obj/%.asm.o: %.asm Makefile obj/NASMFLAGS
 	mkdir -p "$(dir $@)"
 	nasm $(NASMFLAGS) -MD $(@:.o=.d) -MP $< -o $@
 
