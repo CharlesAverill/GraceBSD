@@ -300,6 +300,24 @@ $(VARSFILES):
 	@mkdir -p "$(dir $@)"
 	@printf '%s\n' '$(subst ','\'',$($(notdir $@)))' > $@
 
+# CakeML
+CAKEML_COMPILER := ../tools/cake-x64-64/cake
+CAKEML_SOURCE   := cml/main.cml
+CAKEML_ASM      := obj/ml/main.S
+CAKEML_OBJ      := obj/ml/main.S.o
+
+# Include the generated CakeML object in the kernel link.
+override OBJ += $(CAKEML_OBJ)
+
+$(CAKEML_ASM): $(CAKEML_SOURCE) $(CAKEML_COMPILER)
+	mkdir -p "$(dir $@)"
+	$(CAKEML_COMPILER) --gc=none < $< > $@.tmp
+	mv $@.tmp $@
+
+$(CAKEML_OBJ): $(CAKEML_ASM) Makefile obj/CC obj/CFLAGS obj/CPPFLAGS
+	mkdir -p "$(dir $@)"
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+
 # Link rules for the final executable.
 bin/$(OUTPUT): Makefile obj/CC obj/CFLAGS obj/LDFLAGS arch/x86_64/linker.ld $(OBJ)
 	mkdir -p "$(dir $@)"

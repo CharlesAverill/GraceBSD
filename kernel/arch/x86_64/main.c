@@ -6,6 +6,7 @@
 #include "serial.h"
 #include "framebuffer.h"
 #include "generated/splash_data.h"
+#include "cakeml.h"
 
 // Set the base revision to 6, this is recommended as this is the latest
 // base revision described by the Limine boot protocol specification.
@@ -62,13 +63,15 @@ void kmain(void) {
 
         // Ensure the framebuffer has 32-bit RGB pixels, the only kind we handle.
         if (framebuffer->memory_model != LIMINE_FRAMEBUFFER_RGB || framebuffer->bpp != 32) {
-			serial_write("framebuffer memory model is not 32-bit RGB");
+			serial_write("framebuffer memory model is not 32-bit RGB\n");
             hcf();
         }
 
         fb_pattern(framebuffer, splash_pixels, SPLASH_WIDTH, SPLASH_HEIGHT);
     }
 
-	
+	cakeml_run();
+	serial_write("done running cakeml\n");
+
 	hcf();
 }

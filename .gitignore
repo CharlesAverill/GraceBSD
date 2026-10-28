@@ -26,3 +26,4 @@ _build/
 .DS_Store
 
 *.log
+tools/cake-x86-64/

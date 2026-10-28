@@ -1,0 +1,4 @@
+val result = 42;
+val output = Word8Array.array 1 (Word8.fromInt 0);
+val _ = Word8Array.update output 0 (Word8.fromInt result);
+val _ = #(return_value) "" output;
