@@ -1,4 +1,8 @@
-val result = 42;
+fun factorial n = 
+    if n = 0 then 1 else n * factorial (n - 1);
+
+val input = Word8Array.array 1 (Word8.fromInt 0);
+val _ = #(input_value) "" input;
 val output = Word8Array.array 1 (Word8.fromInt 0);
-val _ = Word8Array.update output 0 (Word8.fromInt result);
+val _ = Word8Array.update output 0 (Word8.fromInt (factorial (Word8.toInt (Word8Array.sub input 0))));
 val _ = #(return_value) "" output;

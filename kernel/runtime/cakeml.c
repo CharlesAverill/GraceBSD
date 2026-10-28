@@ -17,6 +17,22 @@ static uint8_t cakeml_memory[
 void cml_clear(void){ }
 
 volatile int cakeml_result = 0;
+volatile int cakeml_input  = 5;
+
+void ffiinput_value(
+    unsigned char *command,
+    long command_length,
+    unsigned char *args,
+    long args_length
+)
+{
+	(void)command;
+	(void)command_length;
+
+	if (args_length >= 1) {
+		args[0] = cakeml_input;
+	}
+}
 
 void ffireturn_value(
     unsigned char *command,
