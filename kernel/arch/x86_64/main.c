@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <limine.h>
+#include <limits.h>
 
 #include "serial.h"
 #include "framebuffer.h"
@@ -68,6 +69,9 @@ void kmain(void) {
         }
 
         fb_pattern(framebuffer, splash_pixels, SPLASH_WIDTH, SPLASH_HEIGHT);
+        
+        for(volatile unsigned int i = 0; i < UINT_MAX / 4; i++);
+        fb_clear(framebuffer);
     }
 
 	cakeml_run();

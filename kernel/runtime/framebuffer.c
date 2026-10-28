@@ -22,6 +22,19 @@ uint32_t fb_pixel(struct limine_framebuffer *fb, uint8_t red, uint8_t green, uin
 #define GREEN(x) ((x & 0x00FF0000) >> 16)
 #define BLUE(x)  ((x & 0x0000FF00) >> 8)
 
+void fb_fill(struct limine_framebuffer *fb, const uint32_t color) {
+    volatile uint32_t *fb_ptr=fb->address;
+    for (size_t y = 0; y < fb->height; y++) {
+        for (size_t x = 0; x < fb->width; x++) {
+            fb_ptr[y * (fb->pitch / 4) + x] = fb_pixel(fb, RED(color), GREEN(color), BLUE(color));
+        }
+    }
+}
+
+void fb_clear(struct limine_framebuffer *fb) {
+    fb_fill(fb, 0);
+}
+
 // Scale and draw a pattern to the screen. Pixel format is 0xRRGGBB00
 void fb_pattern(struct limine_framebuffer *fb, const uint32_t *pattern, uint16_t w, uint16_t h) {
 	volatile uint32_t *fb_ptr = fb->address;
@@ -44,13 +57,7 @@ void fb_pattern(struct limine_framebuffer *fb, const uint32_t *pattern, uint16_t
 
 	// Draw top-left color to entire framebuffer
     serial_write("Filling framebuffer\n");
-	for (size_t y = 0; y < fb->height; y++) {
-		for (size_t x = 0; x < fb->width; x++) {
-			fb_ptr[y * (fb->pitch / 4) + x] = fb_pixel(fb, RED(pattern[0]),
-													   GREEN(pattern[0]),
-													   BLUE(pattern[0]));
-		}
-	}
+    fb_fill(fb, pattern[0]);
 	
 	// Draw splash, centered
     serial_write("Drawing splash\n");
