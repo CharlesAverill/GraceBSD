@@ -10,7 +10,7 @@ QEMUFLAGS := -m 2G
 # Internal QEMU flags that should not be changed by the user.
 override QEMU_MACHINE_FLAGS := \
     -M q35 -serial stdio \
-	-device VGA,edid=on,xres=1280,yres=720
+    -device VGA,edid=on,xres=1280,yres=720
 override QEMU_UEFI_FLAGS := \
     -drive if=pflash,unit=0,format=raw,file=edk2-ovmf-bins/ovmf-code-x86_64.fd,readonly=on
 

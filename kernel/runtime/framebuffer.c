@@ -16,17 +16,48 @@ uint32_t fb_pixel(struct limine_framebuffer *fb, uint8_t red, uint8_t green, uin
          | fb_channel(blue, fb->blue_mask_size, fb->blue_mask_shift);
 }
 
+#define RED(x)   (x & 0xFF000000) >> 24
+#define GREEN(x) (x & 0x00FF0000) >> 16
+#define BLUE(x)  (x & 0x0000FF00) >> 8
+
 // Scale and draw a pattern to the screen. Pixel format is 0xRRGGBB00
 void fb_pattern(struct limine_framebuffer *fb, const uint32_t *pattern, uint16_t w, uint16_t h) {
 	volatile uint32_t *fb_ptr = fb->address;
+
+    // Resample image down if it is larger than the framebuffer
+	if (fb->height < h || fb->width < w) {
+		for (size_t y = 0; y < fb->height; y++) {
+            for (size_t x = 0; x < fb->width; x++) {
+                int patX = (x * w) / fb->width;
+                int patY = (y * h) / fb->height;
+                fb_ptr[y * (fb->pitch / 4) + x] = fb_pixel(fb, RED(pattern[patY * w + patX]),
+                                                           BLUE(pattern[patY * w + patX]),
+                                                           GREEN(pattern[patY * w + patX]));
+            }
+        }
+
+        return;
+    }
+
+	// Draw top-left color to entire framebuffer
 	for (size_t y = 0; y < fb->height; y++) {
 		for (size_t x = 0; x < fb->width; x++) {
-			int patX = (x * w) / fb->width;
-			int patY = (y * h) / fb->height;
-			int r = (pattern[patY * w + patX] & 0xFF000000) >> 24;
-			int g = (pattern[patY * w + patX] & 0x00FF0000) >> 16;
-			int b = (pattern[patY * w + patX] & 0x0000FF00) >> 8;
-			fb_ptr[y * (fb->pitch / 4) + x] = fb_pixel(fb, r, g, b);
+			fb_ptr[y * (fb->pitch / 4) + x] = fb_pixel(fb, RED(pattern[0]),
+													   GREEN(pattern[0]),
+													   BLUE(pattern[0]));
+		}
+	}
+	
+	// Draw splash, centered
+	int startX = (fb->width - w) / 2;
+	int startY = (fb->height - h)  / 2;
+	for (size_t y = 0; y < h; y++) {
+		for (size_t x = 0; x < w; x++) {
+			int off = y * w + x;
+			fb_ptr[(y + startY) * (fb->pitch / 4) + (x + startX)] =
+				fb_pixel(fb, RED(pattern[off]),
+					     GREEN(pattern[off]),
+					     BLUE(pattern[off]));
 		}
 	}
 }
