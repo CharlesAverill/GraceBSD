@@ -265,7 +265,7 @@ $(SPLASH_HEADER): $(SPLASH_BMP) $(BMP_CONVERTER)
 	mkdir -p "$(dir $@)"
 	python3 $(BMP_CONVERTER) $(SPLASH_BMP) $@
 
-obj/runtime/splash.c.o: $(SPLASH_HEADER)
+obj/arch/x86_64/main.c.o: $(SPLASH_HEADER)
 
 # Use "find" to glob all *.c, *.S, and *.asm files in the tree and obtain the
 # object and header dependency file names.
@@ -313,9 +313,9 @@ CAKEML_OBJ      := obj/ml/main.S.o
 .PHONY: cakeml
 cakeml: $(CAKEML_COMPILER)
 $(CAKEML_COMPILER):
-	wget -P $(TOOLS_DIR) "$(CAKEML_REPO)/releases/download/$(CAKEML_VERSION)/cake-x64-64.tar.gz"
+	wget -nc -P $(TOOLS_DIR) "$(CAKEML_REPO)/releases/download/$(CAKEML_VERSION)/cake-x64-64.tar.gz"
 	tar -xzf $(TOOLS_DIR)/cake-x64-64.tar.gz -C $(TOOLS_DIR)
-	make -C $(TOOLS_DIR)/cake-x64-64
+	$(MAKE) -C $(TOOLS_DIR)/cake-x64-64
 
 # Include the generated CakeML object in the kernel link.
 override OBJ += $(CAKEML_OBJ)
@@ -356,12 +356,13 @@ obj/%.asm.o: %.asm Makefile obj/NASMFLAGS
 # Remove object files and the final executable.
 .PHONY: clean
 clean:
-	rm -rf bin obj $(TOOLS_DIR)/cake-x64-64 $(TOOLS_DIR)/*.gz
+	rm -rf bin obj $(dir $(SPLASH_HEADER))
 
 # Remove everything built and generated including downloaded dependencies.
 .PHONY: distclean
 distclean: clean
 	rm -rf .deps-obtained .cache compile_commands.json freestanding-c-hdrs freestanding-lgrt limine-protocol
+	rm -rf $(TOOLS_DIR)/cake-x64-64 $(TOOLS_DIR)/cake-x64-64.tar.gz
 
 # Install the final built executable to its final on-root location. Not
 # install(1), which takes other arguments on illumos and Solaris.

@@ -1,0 +1,28 @@
+# Ubuntu clang-format version 14.0.0-1ubuntu1
+---
+BasedOnStyle: LLVM
+IndentWidth: 4
+---
+Language: Cpp
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReflowComments: false
+BreakBeforeBraces: Attach
+ColumnLimit: 120
+AllowShortEnumsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: false
+AlignConsecutiveMacros:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+AlignConsecutiveAssignments: Consecutive
+AllowShortLoopsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Empty
+AllowShortFunctionsOnASingleLine: Empty
+BraceWrapping:
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+Cpp11BracedListStyle: false
+SpaceInEmptyBlock: true
+---

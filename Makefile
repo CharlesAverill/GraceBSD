@@ -14,7 +14,7 @@ override QEMU_MACHINE_FLAGS := \
 override QEMU_UEFI_FLAGS := \
     -drive if=pflash,unit=0,format=raw,file=edk2-ovmf-bins/ovmf-code-x86_64.fd,readonly=on
 
-override IMAGE_NAME := template
+override IMAGE_NAME := GraceBSD
 
 # User controllable size of the HDD image, in MiB.
 HDD_SIZE := 64
@@ -154,6 +154,13 @@ $(IMAGE_NAME).hdd: limine-binary/limine kernel
 	mcopy -i $(IMAGE_NAME).hdd@@$(HDD_PART_OFFSET) boot/limine.conf limine-binary/limine-bios.sys ::/boot/limine
 	mcopy -i $(IMAGE_NAME).hdd@@$(HDD_PART_OFFSET) limine-binary/BOOTX64.EFI ::/EFI/BOOT
 	mcopy -i $(IMAGE_NAME).hdd@@$(HDD_PART_OFFSET) limine-binary/BOOTIA32.EFI ::/EFI/BOOT
+
+CLANG_FORMAT := $(or $(lastword $(shell printf '%s\n' $(notdir $(wildcard $(addsuffix /clang-format-*,$(subst :, ,$(PATH))))) | grep -E '^clang-format-[0-9]+$$' | sort -t- -k3 -n -u)),clang-format)
+override FMT_FILES := $(shell find kernel/arch kernel/runtime -path kernel/runtime/generated -prune -o -type f \( -name '*.c' -o -name '*.h' \) -print 2>/dev/null)
+
+.PHONY: fmt
+fmt:
+	$(CLANG_FORMAT) -i $(FMT_FILES)
 
 .PHONY: clean
 clean:
