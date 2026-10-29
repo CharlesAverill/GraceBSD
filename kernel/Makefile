@@ -301,10 +301,21 @@ $(VARSFILES):
 	@printf '%s\n' '$(subst ','\'',$($(notdir $@)))' > $@
 
 # CakeML
-CAKEML_COMPILER := ../tools/cake-x64-64/cake
+TOOLS_DIR       := ../tools
+CAKEML_REPO     := https://github.com/CakeML/cakeml/
+CAKEML_VERSION  := v3479
+CAKEML_COMPILER := $(TOOLS_DIR)/cake-x64-64/cake
 CAKEML_SOURCE   := cml/main.cml
 CAKEML_ASM      := obj/ml/main.S
 CAKEML_OBJ      := obj/ml/main.S.o
+
+# Download pinned CakeML release
+.PHONY: cakeml
+cakeml: $(CAKEML_COMPILER)
+$(CAKEML_COMPILER):
+	wget -P $(TOOLS_DIR) "$(CAKEML_REPO)/releases/download/$(CAKEML_VERSION)/cake-x64-64.tar.gz"
+	tar -xzf $(TOOLS_DIR)/cake-x64-64.tar.gz -C $(TOOLS_DIR)
+	make -C $(TOOLS_DIR)/cake-x64-64
 
 # Include the generated CakeML object in the kernel link.
 override OBJ += $(CAKEML_OBJ)
@@ -345,7 +356,7 @@ obj/%.asm.o: %.asm Makefile obj/NASMFLAGS
 # Remove object files and the final executable.
 .PHONY: clean
 clean:
-	rm -rf bin obj
+	rm -rf bin obj $(TOOLS_DIR)/cake-x64-64 $(TOOLS_DIR)/*.gz
 
 # Remove everything built and generated including downloaded dependencies.
 .PHONY: distclean
