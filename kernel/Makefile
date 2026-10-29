@@ -259,7 +259,7 @@ endif
 # Generated RGB pixel data.
 SPLASH_BMP := ../media/splash.bmp
 SPLASH_HEADER := runtime/generated/splash_data.h
-BMP_CONVERTER := tools/bmp_to_rgb.py
+BMP_CONVERTER := ../tools/bmp_to_rgb.py
 
 $(SPLASH_HEADER): $(SPLASH_BMP) $(BMP_CONVERTER)
 	mkdir -p "$(dir $@)"
@@ -308,6 +308,7 @@ CAKEML_COMPILER := $(TOOLS_DIR)/cake-x64-64/cake
 CAKEML_SOURCE   := cml/main.cml
 CAKEML_ASM      := obj/ml/main.S
 CAKEML_OBJ      := obj/ml/main.S.o
+CAKEML_FLAGS    := --main_return=true --gc=none
 
 # Download pinned CakeML release
 .PHONY: cakeml
@@ -322,7 +323,7 @@ override OBJ += $(CAKEML_OBJ)
 
 $(CAKEML_ASM): $(CAKEML_SOURCE) $(CAKEML_COMPILER)
 	mkdir -p "$(dir $@)"
-	$(CAKEML_COMPILER) --gc=none < $< > $@.tmp
+	$(CAKEML_COMPILER) $(CAKEML_FLAGS) < $< > $@.tmp
 	mv $@.tmp $@
 
 $(CAKEML_OBJ): $(CAKEML_ASM) Makefile obj/CC obj/CFLAGS obj/CPPFLAGS

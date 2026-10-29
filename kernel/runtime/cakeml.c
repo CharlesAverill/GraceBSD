@@ -64,6 +64,31 @@ __attribute__((noreturn)) void cml_exit(int code) {
     }
 }
 
+#define MAX_INT_STR_LEN 21
+void itoa(int x, char buf[MAX_INT_STR_LEN]) {
+    int digits[MAX_INT_STR_LEN];
+    int len;
+    for (len = 0; x > 0 || len == 0; len++) {
+        digits[len] = x % 10;
+        x /= 10;
+    }
+
+    int i;
+    for (i = 0; i < len + 1; i++) {
+        buf[i] = '0' + digits[len - i];
+    }
+    buf[i] = '\0';
+}
+
+void cml_err(int arg) {
+    char num[MAX_INT_STR_LEN];
+    serial_write("CakeML returned with code ");
+    serial_write(num);
+    serial_write("\n");
+
+    cml_exit(arg);
+}
+
 void cakeml_run(void) {
     serial_write("CakeML: setting up memory\n");
 
