@@ -54,7 +54,12 @@ char serial_getc(void) {
     while (!serial_received())
         ;
 
-    return inb(COM1);
+    char c = inb(COM1);
+    if (c == '\r')
+        serial_putc('\n');
+    else
+        serial_putc(c);
+    return c;
 }
 
 void serial_write(char* s) {
