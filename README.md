@@ -11,14 +11,19 @@ make
 
 ## Emulate in QEMU
 
-Boots, shows a splash screen, passes a value from C to CakeML, and then receives
-the factorial of that value back from CakeML.
+Boots, shows a splash screen, passes off to [main.cml](kernel/cml/main.cml), then
+returns to C.
 
 ```bash
 make run
 
-# Hello, World from GraceBSD!
-# CakeML: setting up memory
-# CakeML: calling cml_main
-# CakeML: cml_exit called, return value = 120
+Hello, World from GraceBSD!
+Filling framebuffer
+Drawing splash
+CakeML: setting up memory
+CakeML: calling cml_main
+What's your name? Hello, Charles
+15! = 1307674368000
+CakeML: cml_main returned
+done running cakeml
 ```
