@@ -3,7 +3,7 @@
 #include "serial.h"
 #include <stdint.h>
 
-#define FFI(f) void ffi##f(unsigned char* command, long command_length, unsigned char* args, long args_length)
+#define FFI(f) void ffi##f(unsigned char* command, long command_length, uint8_t* args, long args_length)
 
 FFI(serial_write) {
     serial_writen((char*)command, command_length);
@@ -43,7 +43,7 @@ FFI(serial_write_int) {
         return;
     }
 
-    serial_write_int((int64_t)uint64_of_bytes((unsigned char*)args));
+    serial_write_int((int64_t)uint64_of_bytes(args));
 }
 
 // args holds an unsigned 64-bit integer as 8 bytes of little-endian
@@ -53,7 +53,7 @@ FFI(serial_write_hex) {
         return;
     }
 
-    serial_write_hex(uint64_of_bytes((unsigned char*)args));
+    serial_write_hex(uint64_of_bytes(args));
 }
 
 // Get HHDM offset
@@ -73,7 +73,7 @@ FFI(mem_read) {
         return;
     }
 
-    char* addr = (char*)uint64_of_bytes(args);
+    uint8_t* addr = (uint8_t*)uint64_of_bytes(args);
     for (long i = 0; i < args_length - SIZE_OF_INT64; i++) {
         args[SIZE_OF_INT64 + i] = addr[i];
     }
@@ -108,7 +108,7 @@ FFI(mem_write) {
         return;
     }
 
-    char* addr = (char*)uint64_of_bytes(args);
+    uint8_t* addr = (uint8_t*)uint64_of_bytes(args);
     for (long i = 0; i < args_length - SIZE_OF_INT64; i++) {
         addr[i] = args[SIZE_OF_INT64 + i];
     }
@@ -157,4 +157,58 @@ FFI(fatal) {
     }
 
     fatal((ReturnCode)uint64_of_bytes(args), "%.*s", (int)command_length, (char*)command);
+}
+
+FFI(n_mmap_entries) {
+    if (args_length != SIZE_OF_INT64) {
+        error("FFI n_mmap_entries: expected 8 bytes");
+        return;
+    }
+
+    bytes_of_uint64(num_mmap_entries, args);
+}
+
+FFI(load_mmap_entry) {
+    if (args_length != 3 * SIZE_OF_INT64) {
+        error("FFI load_mmap_entry: expected 24 bytes");
+        return;
+    }
+
+    size_t i = uint64_of_bytes(args);
+    if (i >= num_mmap_entries) {
+        error("FFI load_mmap_entry: index %lu out of range", i);
+        return;
+    }
+
+    struct limine_memmap_entry* mmap_entry = mmap_entries[i];
+    bytes_of_uint64(mmap_entry->base, args);
+    bytes_of_uint64(mmap_entry->length, args + SIZE_OF_INT64);
+    bytes_of_uint64(mmap_entry->type, args + 2 * SIZE_OF_INT64);
+}
+
+FFI(cml_heap) {
+    if (args_length != SIZE_OF_INT64) {
+        error("FFI cml_heap: expected 8 bytes");
+        return;
+    }
+
+    bytes_of_uint64((uint64_t)cml_heap, args);
+}
+
+FFI(cml_stack) {
+    if (args_length != SIZE_OF_INT64) {
+        error("FFI cml_stack: expected 8 bytes");
+        return;
+    }
+
+    bytes_of_uint64((uint64_t)cml_stack, args);
+}
+
+FFI(cml_stackend) {
+    if (args_length != SIZE_OF_INT64) {
+        error("FFI cml_stackend: expected 8 bytes");
+        return;
+    }
+
+    bytes_of_uint64((uint64_t)cml_stackend, args);
 }

@@ -26,16 +26,20 @@ structure Bytes = struct
         fill 0 (n mod uint64_modulus)
         end
 
-    (* Decode the first 8 bytes of arr as a little-endian unsigned 64-bit integer *)
-    fun uint64_of_buf (arr : byte_array) =
+    (* Decode the 8 bytes of arr starting at off as a little-endian unsigned
+       64-bit integer *)
+    fun uint64_of_buf_at (arr : byte_array) (off : int) =
         let
-            (* Read the bytes most significant first *)
+            (* Read the most significant bytes first *)
             fun go i acc =
                 if i < 0 then acc
-                else go (i - 1) (acc * 256 + Word8.toInt (Word8Array.sub arr i))
+                else go (i - 1) (acc * 256 + Word8.toInt (Word8Array.sub arr (off + i)))
         in
         go (size_of_int64_buf - 1) 0
         end
+
+    (* Decode the first 8 bytes of arr as a little-endian unsigned 64-bit integer *)
+    fun uint64_of_buf (arr : byte_array) = uint64_of_buf_at arr 0
 
     (* Clamp and encode n as 8 bytes of little-endian two's complement *)
     fun buf_of_int64 (n : int) = buf_of_uint64 (clamp_int64 n)

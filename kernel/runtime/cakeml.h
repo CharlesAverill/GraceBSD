@@ -9,6 +9,6 @@
 #define CAKEML_STACK_SIZE (1u * 1024u * 1024u)
 
 // Start the CakeML kernel loop in a given memory region
-void cakeml_run(char* mem_base, uint64_t mem_size);
+void cakeml_run(uint8_t* mem_base, uint64_t mem_size);
 
 #endif

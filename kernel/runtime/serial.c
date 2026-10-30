@@ -42,11 +42,11 @@ static bool serial_received(void) {
 }
 
 static bool is_transmit_empty(void) {
-    return (inb(COM1 + 5) & 0x20) == 0;
+    return (inb(COM1 + 5) & 0x20);
 }
 
 void serial_putc(char c) {
-    while (is_transmit_empty())
+    while (!is_transmit_empty())
         ;
 
     outb(COM1, c);

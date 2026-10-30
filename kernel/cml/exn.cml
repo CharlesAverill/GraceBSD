@@ -1,0 +1,10 @@
+(* Common exception types *)
+structure Exn = struct
+    exception Invalid_argument string;
+    exception Failure string;
+    exception Exit;
+    exception Sys_error;
+    exception End_of_file;
+    exception Division_by_zero;
+    exception Not_found;
+end

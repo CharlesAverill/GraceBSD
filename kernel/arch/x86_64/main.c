@@ -55,7 +55,9 @@ void hcf(void) {
     }
 }
 
-uint64_t hhdm_off = 0;
+uint64_t hhdm_off                                     = 0;
+LIMINE_PTR(struct limine_memmap_entry**) mmap_entries = NULL;
+size_t num_mmap_entries                               = 0;
 
 static const char* memmap_type_name(uint64_t type) {
     switch (type) {
@@ -115,18 +117,20 @@ void kmain(void) {
 
     // Print out memory map entries and select the largest one to use as kernel
     // heap and eventually user process memory
-    char* largest_off    = NULL;
+    uint8_t* largest_off = NULL;
     uint64_t largest_len = 0;
     if (memmap_request.response == NULL) {
         fatal(RC_INIT_ERROR, "No memory map response");
     }
     debug("Memory map:");
     debug("%3s  %-18s  %-18s  %s", "#", "BASE", "LENGTH", "TYPE");
-    for (uint64_t i = 0; i < memmap_request.response->entry_count; i++) {
-        struct limine_memmap_entry* entry = memmap_request.response->entries[i];
+    mmap_entries     = memmap_request.response->entries;
+    num_mmap_entries = memmap_request.response->entry_count;
+    for (uint64_t i = 0; i < num_mmap_entries; i++) {
+        struct limine_memmap_entry* entry = mmap_entries[i];
 
         if (entry->type == LIMINE_MEMMAP_USABLE && entry->length >= CAKEML_HEAP_SIZE + CAKEML_STACK_SIZE) {
-            largest_off = largest_len < entry->length ? (char*)entry->base : largest_off;
+            largest_off = largest_len < entry->length ? (uint8_t*)entry->base : largest_off;
             largest_len = largest_len < entry->length ? entry->length : largest_len;
         }
 

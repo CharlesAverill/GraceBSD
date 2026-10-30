@@ -13,20 +13,14 @@
 
 const LogInfo logInfoLevels[] = {
     {LOG_NONE,      "",           ANSI_RESET           },
-    { LOG_DEBUG,    "   [DEBUG]", ANSI_BOLD            },
-    { LOG_INFO,     "    [INFO]", ANSI_BOLD            },
-    { LOG_WARNING,  " [WARNING]", ANSI_BOLD ANSI_YELLOW},
-    { LOG_ERROR,    "   [ERROR]", ANSI_BOLD ANSI_ORANGE},
-    { LOG_CRITICAL, "[CRITICAL]", ANSI_BOLD ANSI_RED   }
+    { LOG_DEBUG,    "[DEBUG]", ANSI_BOLD            },
+    { LOG_INFO,     "[INFO] ", ANSI_BOLD            },
+    { LOG_WARNING,  "[WARN] ", ANSI_BOLD ANSI_YELLOW},
+    { LOG_ERROR,    "[ERROR]", ANSI_BOLD ANSI_ORANGE},
+    { LOG_CRITICAL, "[CRIT] ", ANSI_BOLD ANSI_RED   }
 };
 
-const char* returnCodeStrings[] = {
-    "OK",
-    "ERROR",
-    "MEMORY ERROR",
-    "INITIALIZATION ERROR"
-    ""
-};
+const char* returnCodeStrings[] = { "OK", "ERROR", "MEMORY ERROR", "INITIALIZATION ERROR", "" };
 
 LogLevel global_log_level = LOG_DEBUG;
 
@@ -40,11 +34,12 @@ LogLevel global_log_level = LOG_DEBUG;
 void fatal(ReturnCode rc, const char* fmt, ...) {
     va_list func_args;
 
-    const char* rc_name = rc <= RC_END ? returnCodeStrings[rc] : "UNKNOWN";
+    const char* rc_name = rc < RC_END ? returnCodeStrings[rc] : "UNKNOWN";
 
     va_start(func_args, fmt);
     serial_printf(ERROR_RED "[%s] " ANSI_RESET, rc_name);
     serial_vprintf(fmt, func_args);
+    serial_printf("\n");
     va_end(func_args);
 
     hcf();

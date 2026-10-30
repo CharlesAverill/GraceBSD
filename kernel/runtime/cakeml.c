@@ -1,10 +1,7 @@
 #include "cakeml.h"
+#include "hw.h"
 #include "logging.h"
 #include <stdint.h>
-
-extern char* cml_heap;
-extern char* cml_stack;
-extern char* cml_stackend;
 
 extern int cml_main(void);
 
@@ -18,7 +15,7 @@ void cml_err(int arg) {
     fatal(RC_ERROR, "CakeML runtime error %d", arg);
 }
 
-void cakeml_run(char* mem_base, uint64_t mem_size) {
+void cakeml_run(uint8_t* mem_base, uint64_t mem_size) {
     debug("CakeML: setting up memory");
 
     cml_heap     = mem_base;

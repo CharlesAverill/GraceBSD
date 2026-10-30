@@ -24,6 +24,7 @@ structure Log = struct
         Rc_Ok
       | Rc_Error
       | Rc_Memory_Error
+      | Rc_Init_Error
 
     (* Must match the order of ReturnCode in logging.h *)
     fun int_of_rc (rc : return_code) =
@@ -31,10 +32,15 @@ structure Log = struct
           Rc_Ok => 0
         | Rc_Error => 1
         | Rc_Memory_Error => 2
+        | Rc_Init_Error => 3
 
     (* A fatal log statement that immediately halts the machine *)
     fun fatal (rc : return_code) (msg : string) =
-        #(fatal) msg (Bytes.buf_of_uint64 (int_of_rc rc))
+        (#(fatal) msg (Bytes.buf_of_uint64 (int_of_rc rc));
+         (* This [raise] is never reached, because #(fatal) calls hcf().
+            Including the [raise] makes [fatal] polymorphic, so it won't throw
+            type errors e.g. in catch-all cases *)
+         raise Exn.Exit)
 
     (* Prints [msg] if [log_level] is at least the global log level *)
     fun log (log_level : log_type) (msg : string) =

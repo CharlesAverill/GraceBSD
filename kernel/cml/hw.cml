@@ -12,6 +12,102 @@ structure Hw = struct
         Bytes.uint64_of_buf buf
         end
 
+    (* Limine memory map types *)
+    datatype mmap_entry_type =
+          Usable | Reserved | Reclaimable | Nvs | BadMemory | BootloaderReclaimable
+        | ExecutableAndModules | Framebuffer | ReservedMapped
+
+    fun mmap_entry_type_of_int (i : int) =
+        case i of
+          0 => Usable
+        | 1 => Reserved
+        | 2 => Reclaimable
+        | 3 => Nvs
+        | 4 => BadMemory
+        | 5 => BootloaderReclaimable
+        | 6 => ExecutableAndModules
+        | 7 => Framebuffer
+        | 8 => ReservedMapped
+        | _ => Log.fatal Log.Rc_Init_Error "mmap_entry_type_of_int: out of bounds"
+
+    fun string_of_mmap_entry_type (m : mmap_entry_type) =
+        case m of
+          Usable => "USABLE"
+        | Reserved => "RESERVED"
+        | Reclaimable => "RECLAIMABLE"
+        | Nvs => "NVS"
+        | BadMemory => "BAD_MEMORY"
+        | BootloaderReclaimable => "BOOTLOADER_RECLAIMABLE"
+        | ExecutableAndModules => "EXECUTABLE_AND_MODULES"
+        | Framebuffer => "FRAMEBUFFER"
+        | ReservedMapped => "RESERVED_MAPPED"
+
+    (* Memory map entry: physical base, length, and Limine type *)
+    type mmap_entry = int * int * mmap_entry_type
+
+    (* List of all memory map entries *)
+    val mmap_entries : mmap_entry list =
+        let
+            val lenbuf = Bytes.buf_of_uint64 0
+            val _ = #(n_mmap_entries) "" lenbuf
+            val len = Bytes.uint64_of_buf lenbuf
+            val entrybuf = Word8Array.array (3 * Bytes.size_of_uint64_buf) (Word8.fromInt 0)
+            fun field (k : int) = Bytes.uint64_of_buf_at entrybuf (k * Bytes.size_of_uint64_buf)
+            fun load_entry (i : int) =
+                let
+                    val _ = Word8Array.copy (Bytes.buf_of_uint64 i) 0 Bytes.size_of_uint64_buf entrybuf 0
+                    val _ = #(load_mmap_entry) "" entrybuf
+                in
+                (field 0, field 1, mmap_entry_type_of_int (field 2))
+                end
+            fun load_entries (i : int) =
+                if i >= len then []
+                else
+                    let
+                        val entry = load_entry i
+                    in
+                    entry :: load_entries (i + 1)
+                    end
+        in
+        load_entries 0
+        end
+
+    (* Heap address *)
+    val addr_heap : int =
+        let
+            val buf = Bytes.buf_of_uint64 0
+        in
+        #(cml_heap) "" buf;
+        Bytes.uint64_of_buf buf
+        end
+
+    (* Physical heap address *)
+    val paddr_heap : int = addr_heap - hhdm_off
+
+    (* Stack address *)
+    val addr_stack : int =
+        let
+            val buf = Bytes.buf_of_uint64 0
+        in
+        #(cml_stack) "" buf;
+        Bytes.uint64_of_buf buf
+        end
+
+    (* Physical stack address *)
+    val paddr_stack : int = addr_stack - hhdm_off
+
+    (* Heap size *)
+    val heap_size : int = addr_stack - addr_heap
+
+    (* Stack size *)
+    val stack_size : int =
+        let
+            val buf = Bytes.buf_of_uint64 0
+        in
+        #(cml_stackend) "" buf;
+        Bytes.uint64_of_buf buf - addr_stack
+        end
+
     (* Read [len] bytes from memory address [addr] *)
     fun mem_read (addr : int) (len : int) =
         let
