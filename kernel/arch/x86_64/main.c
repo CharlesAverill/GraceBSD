@@ -105,11 +105,11 @@ void kmain(void) {
             largest_len = largest_len < entry->length ? entry->length : largest_len;
         }
 
-        serial_write_int(i);
+        serial_write_hex(i);
         serial_write(": BASE=");
-        serial_write_int(entry->base);
+        serial_write_hex(entry->base);
         serial_write("; LENGTH=");
-        serial_write_int(entry->length);
+        serial_write_hex(entry->length);
         serial_write("; TYPE=");
         switch (entry->type) {
         case LIMINE_MEMMAP_USABLE:
@@ -148,9 +148,9 @@ void kmain(void) {
         hcf();
     }
     serial_write("Using segment at ");
-    serial_write_int((int64_t)largest_off);
+    serial_write_hex((uint64_t)largest_off);
     serial_write(" with length ");
-    serial_write_int(largest_len);
+    serial_write_hex(largest_len);
     serial_write("\n");
 
     // Get HHDM offset for [largest_off]
