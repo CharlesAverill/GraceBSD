@@ -34,8 +34,8 @@ override HDD_PART_END := $(shell echo $$(( $(HDD_PART_START) + $(HDD_PART_SECTOR
 override HDD_PART_OFFSET := $(shell echo $$(( $(HDD_PART_START) * 512 )))
 
 # Toolchain for building the 'limine' executable for the host.
-HOST_CC := cc
-HOST_CFLAGS := -g -O2 -pipe
+HOST_CC := clang
+HOST_CFLAGS := -g -Ofast -pipe
 HOST_CPPFLAGS :=
 HOST_LDFLAGS :=
 HOST_LIBS :=
