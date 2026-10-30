@@ -338,7 +338,7 @@ CAKEML_VERSION  := v3479
 CAKEML_COMPILER := $(TOOLS_DIR)/cake-x64-64/cake
 CAKEML_ASM      := obj/ml/main.S
 CAKEML_OBJ      := obj/ml/main.S.o
-CAKEML_FLAGS    := --main_return=true --gc=none
+CAKEML_FLAGS    := --main_return=true --gc=simple
 
 # Download pinned CakeML release
 .PHONY: cakeml

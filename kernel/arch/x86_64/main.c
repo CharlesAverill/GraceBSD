@@ -35,6 +35,18 @@ __attribute__((used, section(".limine_requests_start"))) static volatile uint64_
 __attribute__((used, section(".limine_requests_end"))) static volatile uint64_t limine_requests_end_marker[] =
     LIMINE_REQUESTS_END_MARKER;
 
+// Request memory map
+__attribute__((used, section(".limine_requests"))) static volatile struct limine_memmap_request memmap_request = {
+    .id = LIMINE_MEMMAP_REQUEST_ID, .revision = 0
+};
+
+// Request HHDM (Higher-Half Direct Map)
+// Dereferencing physical RAM addresses directly will cause page faults because Limine turns on paging
+// To dereference a physical RAM address, you have to add the HHDM offset to the pointer
+__attribute__((used, section(".limine_requests"))) static volatile struct limine_hhdm_request hhdm_request = {
+    .id = LIMINE_HHDM_REQUEST_ID, .revision = 0
+};
+
 static void hcf(void) {
     for (;;) {
         __asm__ volatile("hlt");
@@ -74,7 +86,79 @@ void kmain(void) {
         // fb_clear(framebuffer);
     }
 
-    cakeml_run();
+    // Print out memory map entries and select the largest one to use as kernel
+    // heap and eventually user process memory
+    char* largest_off;
+    uint64_t largest_len = 0;
+    serial_write("== MEMORY MAP ==\n");
+    if (memmap_request.response == NULL) {
+        serial_write("FAILURE: No memory map response\n");
+        hcf();
+    }
+    for (uint64_t i = 0; i < memmap_request.response->entry_count; i++) {
+        struct limine_memmap_entry* entry = memmap_request.response->entries[i];
+
+        if (entry->type == LIMINE_MEMMAP_USABLE && entry->length >= CAKEML_HEAP_SIZE + CAKEML_STACK_SIZE) {
+            largest_off = largest_len < entry->length ? (char*)entry->base : largest_off;
+            largest_len = largest_len < entry->length ? entry->length : largest_len;
+        }
+
+        serial_write_int(i);
+        serial_write(": BASE=");
+        serial_write_int(entry->base);
+        serial_write("; LENGTH=");
+        serial_write_int(entry->length);
+        serial_write("; TYPE=");
+        switch (entry->type) {
+        case LIMINE_MEMMAP_USABLE:
+            serial_write("USABLE\n");
+            break;
+        case LIMINE_MEMMAP_RESERVED:
+            serial_write("MEMMAP_RESERVED\n");
+            break;
+        case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
+            serial_write("MEMMAP_ACPI_RECLAIMABLE\n");
+            break;
+        case LIMINE_MEMMAP_ACPI_NVS:
+            serial_write("MEMMAP_ACPI_NVS\n");
+            break;
+        case LIMINE_MEMMAP_BAD_MEMORY:
+            serial_write("MEMMAP_BAD_MEMORY\n");
+            break;
+        case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
+            serial_write("MEMMAP_BOOTLOADER_RECLAIMABLE\n");
+            break;
+        case LIMINE_MEMMAP_EXECUTABLE_AND_MODULES:
+            serial_write("MEMMAP_EXECUTABLE_AND_MODULES\n");
+            break;
+        case LIMINE_MEMMAP_FRAMEBUFFER:
+            serial_write("MEMMAP_FRAMEBUFFER\n");
+            break;
+        case LIMINE_MEMMAP_RESERVED_MAPPED:
+            serial_write("MEMMAP_RESERVED_MAPPED\n");
+            break;
+        }
+    }
+
+    // Report on found memory segment
+    if (largest_len < CAKEML_HEAP_SIZE + CAKEML_STACK_SIZE) {
+        serial_write("FAILURE: Did not find a suitable memory region for the kernel\n");
+        hcf();
+    }
+    serial_write("Using segment at ");
+    serial_write_int((int64_t)largest_off);
+    serial_write(" with length ");
+    serial_write_int(largest_len);
+    serial_write("\n");
+
+    // Get HHDM offset for [largest_off]
+    if (hhdm_request.response == NULL) {
+        serial_write("FAILURE: No HHDM response\n");
+        hcf();
+    }
+    uint64_t hhdm_off = hhdm_request.response->offset;
+
+    cakeml_run(hhdm_off + largest_off, largest_len);
     serial_write("done running cakeml\n");
 
     hcf();

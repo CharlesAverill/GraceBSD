@@ -17,6 +17,13 @@ uint64_t uint64_of_bytes(unsigned char bytes[]) {
     return bits;
 }
 
+void bytes_of_uint64(uint64_t n, unsigned char bytes[]) {
+    for (int i = 0; i < SIZE_OF_INT64; i++) {
+        bytes[i] = n & 0xff;
+        n >>= 8;
+    }
+}
+
 // Read a fixed number of bytes from COM1, stop reading upon a newline or CRE
 FFI(serial_readn) {
     if (args_length < SIZE_OF_INT64) {
@@ -26,7 +33,8 @@ FFI(serial_readn) {
 
     uint64_t len = uint64_of_bytes((unsigned char*)args);
 
-    serial_readn((char*)(args + SIZE_OF_INT64), len);
+    len = serial_readn((char*)(args + SIZE_OF_INT64), len);
+    bytes_of_uint64(len, args);
 }
 
 // args holds a signed 64-bit integer as 8 bytes of little-endian two's complement

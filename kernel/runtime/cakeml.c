@@ -1,16 +1,12 @@
+#include "cakeml.h"
 #include "serial.h"
 #include <stdint.h>
-
-#define CAKEML_HEAP_SIZE  (1u * 1024u * 1024u)
-#define CAKEML_STACK_SIZE (1u * 1024u * 1024u)
 
 extern char* cml_heap;
 extern char* cml_stack;
 extern char* cml_stackend;
 
-extern void cml_main(void);
-
-static uint8_t cakeml_memory[CAKEML_HEAP_SIZE + CAKEML_STACK_SIZE] __attribute__((aligned(16)));
+extern int cml_main(void);
 
 void cml_clear(void) { }
 
@@ -30,15 +26,17 @@ void cml_err(int arg) {
     cml_exit(arg);
 }
 
-void cakeml_run(void) {
+void cakeml_run(char* mem_base, uint64_t mem_size) {
     serial_write("CakeML: setting up memory\n");
 
-    cml_heap     = (char*)cakeml_memory;
+    cml_heap     = mem_base;
     cml_stack    = cml_heap + CAKEML_HEAP_SIZE;
     cml_stackend = cml_stack + CAKEML_STACK_SIZE;
 
     serial_write("CakeML: calling cml_main\n");
-    cml_main();
+    int rc = cml_main();
 
-    serial_write("CakeML: cml_main returned\n");
+    serial_write("CakeML: cml_main returned with code = ");
+    serial_write_int(rc);
+    serial_write("\n");
 }

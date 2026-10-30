@@ -1,16 +1,5 @@
 val empty_buf = Word8Array.array 0 (Word8.fromInt 0)
 
-fun buf_of_int_list (l : int list) =
-    let
-      val arr = Word8Array.array (List.length l) (Word8.fromInt 0)
-      fun fill i xs =
-        case xs of
-          [] => arr
-        | x :: rest => (Word8Array.update arr i (Word8.fromInt x); fill (i + 1) rest)
-    in
-      fill 0 l
-    end
-
 val int64_max = 9223372036854775807
 val int64_min = ~9223372036854775808
 
@@ -32,6 +21,21 @@ fun buf_of_int64 (n : int) =
       fill 0 (clamp_int64 n)
     end
 
+(* Decode the first 8 bytes of arr as a little-endian two's complement signed
+   64-bit integer; the inverse of buf_of_int64 *)
+fun int64_of_buf (arr : byte_array) =
+    let
+      (* Read the bytes most significant first, building the unsigned value *)
+      fun go i acc =
+        if i < 0 then acc
+        else go (i - 1) (acc * 256 + Word8.toInt (Word8Array.sub arr i))
+      val unsigned = go (size_of_int64_buf - 1) 0
+    in
+      (* Values with the top bit set are negative in two's complement *)
+      if unsigned > int64_max then unsigned - 18446744073709551616 else unsigned
+    end
+
+
 (* UART I/O functions *)
 structure Serial = struct
     (* Write a string to COM1 *)
@@ -46,7 +50,7 @@ structure Serial = struct
         in
             Word8Array.copy lenbuf 0 size_of_int64_buf buf 0;
             #(serial_readn) "" buf;
-            Word8Array.substring buf size_of_int64_buf n
+            Word8Array.substring buf size_of_int64_buf (int64_of_buf buf)
         end
 
     (* Write a string to COM1 and print a newline *)

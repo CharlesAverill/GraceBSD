@@ -75,13 +75,14 @@ void serial_writen(char* s, size_t len) {
     }
 }
 
-void serial_readn(char* s, size_t len) {
+size_t serial_readn(char* s, size_t len) {
     size_t i;
     for (i = 0; i < len; i++) {
         s[i] = serial_getc();
         if (s[i] == '\n' || s[i] == '\r')
             break;
     }
+    return i;
 }
 
 // Sign, 19 digits for INT64_MIN, and the terminator.
