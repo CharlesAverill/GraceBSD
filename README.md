@@ -1,7 +1,17 @@
 # GraceBSD
 
-A Unix v6-like kernel for a BSD-like operating system built with CakeML.
-Uses the Limine bootloader.
+![boot screen](./media/boot_screen.png)
+
+A [Unix v6](https://github.com/mit-pdos/xv6-public)-like kernel for a BSD-like operating system built with [CakeML](https://cakeml.org/).
+Uses the [Limine](https://github.com/limine-bootloader/limine) bootloader.
+
+## Dependencies
+
+```bash
+sudo apt install build-essential git curl wget python3 \
+                 xorriso qemu-system-x86 \
+                 mtools gdisk nasm clang-format git-lfs
+```
 
 ## Build
 
@@ -11,8 +21,7 @@ make
 
 ## Emulate in QEMU
 
-Boots, shows a splash screen, passes off to [main.cml](kernel/cml/main.cml), then
-returns to C.
+Boots, shows a splash screen, passes off to [main.cml](kernel/cml/main.cml), then returns to C.
 
 ```bash
 make run
