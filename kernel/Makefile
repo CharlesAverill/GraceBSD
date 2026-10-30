@@ -90,6 +90,7 @@ override LD_HAS_FLAG = $(shell ! LC_ALL=C $(CC) $(CFLAGS) $(LDFLAGS) -Wl,--help 
 override CFLAGS += \
     -Wall \
     -Wextra \
+    -Wno-unused-parameter \
     -std=gnu11 \
     -ffreestanding \
     -fno-exceptions \
@@ -269,12 +270,42 @@ obj/arch/x86_64/main.c.o: $(SPLASH_HEADER)
 
 # Use "find" to glob all *.c, *.S, and *.asm files in the tree and obtain the
 # object and header dependency file names.
-override SRCFILES := $(shell find -L arch runtime freestanding-lgrt/src -type f 2>/dev/null | LC_ALL=C sort)
+override SRCFILES := $(shell find -L arch runtime freestanding-lgrt/src cml -type f 2>/dev/null | LC_ALL=C sort)
 override CFILES := $(filter %.c,$(SRCFILES))
+override CMLFILES := $(filter %.cml,$(SRCFILES))
 override ASFILES := $(filter %.S,$(SRCFILES))
 override NASMFILES := $(filter %.asm,$(SRCFILES))
 override OBJ := $(addprefix obj/,$(CFILES:.c=.c.o) $(ASFILES:.S=.S.o) $(NASMFILES:.asm=.asm.o))
 override HEADER_DEPS := $(addprefix obj/,$(CFILES:.c=.c.d) $(ASFILES:.S=.S.d) $(NASMFILES:.asm=.asm.d))
+# The CakeML compiler takes one program, so order the sources so each file comes
+# after the files whose structures it uses. A file defining no structure provides
+# "main". Only structures defined in cml/ count as dependencies, so basis library
+# modules need no listing.
+override CML_STRUCTURE = sed -nE 's/^[[:space:]]*structure[[:space:]]+([A-Za-z0-9_]+).*/\1/p'
+override CML_MODULES := $(shell $(CML_STRUCTURE) $(CMLFILES) 2>/dev/null)
+override ORDERED_CMLFILES := $(shell \
+	order=$$(for f in $(CMLFILES); do \
+		prov=$$($(CML_STRUCTURE) $$f | head -n 1); \
+		prov=$${prov:-main}; \
+		echo "$$prov $$prov"; \
+		for r in $$(grep -oE '\b[A-Z][A-Za-z0-9_]*\.' $$f | tr -d . | sort -u); do \
+			if [ "$$r" != "$$prov" ] && echo " $(CML_MODULES) " | grep -q " $$r "; then \
+				echo "$$r $$prov"; \
+			fi; \
+		done; \
+	done | tsort 2>/dev/null) || { echo dependency-cycle; exit 0; }; \
+	for mod in $$order; do \
+		for f in $(CMLFILES); do \
+			prov=$$($(CML_STRUCTURE) $$f | head -n 1); \
+			if [ "$${prov:-main}" = "$$mod" ]; then echo $$f; fi; \
+		done; \
+	done)
+
+# Fail rather than silently leave a file out of the program, or compile it in an
+# order where a structure is used before it is defined.
+ifneq ($(sort $(ORDERED_CMLFILES)),$(sort $(CMLFILES)))
+    $(error Could not order the CakeML sources $(CMLFILES), got: $(ORDERED_CMLFILES))
+endif
 
 # Default target. This must come first, before header dependencies.
 .PHONY: all
@@ -305,7 +336,6 @@ TOOLS_DIR       := ../tools
 CAKEML_REPO     := https://github.com/CakeML/cakeml/
 CAKEML_VERSION  := v3479
 CAKEML_COMPILER := $(TOOLS_DIR)/cake-x64-64/cake
-CAKEML_SOURCE   := cml/main.cml
 CAKEML_ASM      := obj/ml/main.S
 CAKEML_OBJ      := obj/ml/main.S.o
 CAKEML_FLAGS    := --main_return=true --gc=none
@@ -321,9 +351,9 @@ $(CAKEML_COMPILER):
 # Include the generated CakeML object in the kernel link.
 override OBJ += $(CAKEML_OBJ)
 
-$(CAKEML_ASM): $(CAKEML_SOURCE) $(CAKEML_COMPILER)
+$(CAKEML_ASM): $(ORDERED_CMLFILES) $(CAKEML_COMPILER)
 	mkdir -p "$(dir $@)"
-	$(CAKEML_COMPILER) $(CAKEML_FLAGS) < $< > $@.tmp
+	cat $(ORDERED_CMLFILES) | $(CAKEML_COMPILER) $(CAKEML_FLAGS) > $@.tmp
 	mv $@.tmp $@
 
 $(CAKEML_OBJ): $(CAKEML_ASM) Makefile obj/CC obj/CFLAGS obj/CPPFLAGS

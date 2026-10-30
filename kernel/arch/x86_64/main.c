@@ -70,8 +70,8 @@ void kmain(void) {
 
         fb_pattern(framebuffer, splash_pixels, SPLASH_WIDTH, SPLASH_HEIGHT);
 
-        for (volatile unsigned int i = 0; i < UINT_MAX / 4; i++) { }
-        fb_clear(framebuffer);
+        // for (volatile unsigned int i = 0; i < UINT_MAX / 4; i++) { }
+        // fb_clear(framebuffer);
     }
 
     cakeml_run();

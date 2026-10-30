@@ -39,13 +39,6 @@ static bool serial_received(void) {
     return inb(COM1 + 5) & 1;
 }
 
-char read_serial() {
-    while (serial_received() == 0)
-        ;
-
-    return inb(COM1);
-}
-
 static bool is_transmit_empty(void) {
     return (inb(COM1 + 5) & 0x20) == 0;
 }
@@ -57,11 +50,88 @@ void serial_putc(char c) {
     outb(COM1, c);
 }
 
-void serial_write(const char* s) {
+char serial_getc(void) {
+    while (!serial_received())
+        ;
+
+    return inb(COM1);
+}
+
+void serial_write(char* s) {
     while (*s) {
         if (*s == '\n') {
             serial_putc('\r');
         }
         serial_putc(*s++);
     }
+}
+
+void serial_writen(char* s, size_t len) {
+    for (size_t i = 0; i < len; i++) {
+        if (*s == '\n') {
+            serial_putc('\r');
+        }
+        serial_putc(*s++);
+    }
+}
+
+void serial_readn(char* s, size_t len) {
+    size_t i;
+    for (i = 0; i < len; i++) {
+        s[i] = serial_getc();
+        if (s[i] == '\n' || s[i] == '\r')
+            break;
+    }
+}
+
+// Sign, 19 digits for INT64_MIN, and the terminator.
+#define MAX_INT_STR_LEN 21
+
+void serial_write_int(int64_t x) {
+    char buf[MAX_INT_STR_LEN];
+    char* p = buf + sizeof(buf);
+
+    // Work on the magnitude as unsigned, since -INT64_MIN overflows int64_t.
+    uint64_t mag = x < 0 ? -(uint64_t)x : (uint64_t)x;
+
+    *--p = '\0';
+    do {
+        *--p = '0' + mag % 10;
+        mag /= 10;
+    } while (mag > 0);
+
+    if (x < 0) {
+        *--p = '-';
+    }
+
+    serial_write(p);
+}
+
+int64_t atol(char* s) {
+    long n  = 0;
+    int neg = 0;
+
+    while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r' || *s == '\v' || *s == '\f') {
+        s++;
+    }
+
+    if (*s == '-') {
+        neg = 1;
+        s++;
+    } else if (*s == '+') {
+        s++;
+    }
+
+    while (*s >= '0' && *s <= '9') {
+        n = n * 10 + (*s - '0');
+        s++;
+    }
+
+    return neg ? -n : n;
+}
+
+int64_t serial_read_int(void) {
+    char buf[MAX_INT_STR_LEN];
+    serial_readn(buf, MAX_INT_STR_LEN);
+    return atol(buf);
 }
