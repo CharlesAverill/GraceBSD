@@ -53,6 +53,8 @@ static void hcf(void) {
     }
 }
 
+uint64_t hhdm_off = 0;
+
 // Kernel entrypoint, pointed to by /boot/limine.conf
 void kmain(void) {
     // Ensure the bootloader actually understands our base revision (see spec).
@@ -156,7 +158,7 @@ void kmain(void) {
         serial_write("FAILURE: No HHDM response\n");
         hcf();
     }
-    uint64_t hhdm_off = hhdm_request.response->offset;
+    hhdm_off = hhdm_request.response->offset;
 
     cakeml_run(hhdm_off + largest_off, largest_len);
     serial_write("done running cakeml\n");

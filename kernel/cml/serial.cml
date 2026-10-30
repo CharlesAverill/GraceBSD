@@ -1,64 +1,28 @@
-val empty_buf = Word8Array.array 0 (Word8.fromInt 0)
-
-val int64_max = 9223372036854775807
-val int64_min = ~9223372036854775808
-
-fun clamp_int64 (n : int) =
-    if n > int64_max then int64_max
-    else if n < int64_min then int64_min
-    else n
-
-val size_of_int64_buf = 8
-
-(* Clamp and encode n as 8 bytes of little-endian two's complement *)
-fun buf_of_int64 (n : int) =
-    let
-      val arr = Word8Array.array size_of_int64_buf (Word8.fromInt 0)
-      fun fill i v =
-        if i = size_of_int64_buf then arr
-        else (Word8Array.update arr i (Word8.fromInt (v mod 256)); fill (i + 1) (v div 256))
-    in
-      fill 0 (clamp_int64 n)
-    end
-
-(* Decode the first 8 bytes of arr as a little-endian two's complement signed
-   64-bit integer; the inverse of buf_of_int64 *)
-fun int64_of_buf (arr : byte_array) =
-    let
-      (* Read the bytes most significant first, building the unsigned value *)
-      fun go i acc =
-        if i < 0 then acc
-        else go (i - 1) (acc * 256 + Word8.toInt (Word8Array.sub arr i))
-      val unsigned = go (size_of_int64_buf - 1) 0
-    in
-      (* Values with the top bit set are negative in two's complement *)
-      if unsigned > int64_max then unsigned - 18446744073709551616 else unsigned
-    end
-
-
 (* UART I/O functions *)
 structure Serial = struct
     (* Write a string to COM1 *)
     fun write (s : string) =
-        #(serial_write) s empty_buf
+        #(serial_write) s Bytes.empty_buf
 
     (* Read n bytes from COM1, stop on newline or CR *)
     fun readn (n : int) =
         let
-            val lenbuf = buf_of_int64 n
-            val buf = Word8Array.array (size_of_int64_buf + n) (Word8.fromInt 0)
+            val buf = Word8Array.array (Bytes.size_of_uint64_buf + n) (Word8.fromInt 0)
         in
-            Word8Array.copy lenbuf 0 size_of_int64_buf buf 0;
             #(serial_readn) "" buf;
-            Word8Array.substring buf size_of_int64_buf (int64_of_buf buf)
+            Word8Array.substring buf Bytes.size_of_uint64_buf (Bytes.uint64_of_buf buf)
         end
 
     (* Write a string to COM1 and print a newline *)
     fun writeln (s : string) =
-        #(serial_write) (s ^ "\n") empty_buf
+        #(serial_write) (s ^ "\n") Bytes.empty_buf
 
     (* Clamp a CakeML unbounded int to a signed 64-bit integer and write it in
        decimal to the COM1 *)
     fun write_int (n : int) =
-        #(serial_write_int) "" (buf_of_int64 n)
+        #(serial_write_int) "" (Bytes.buf_of_int64 n)
+
+    (* Write n in hexadecimal to COM1 as an unsigned 64-bit integer *)
+    fun write_hex (n : int) =
+        #(serial_write_hex) "" (Bytes.buf_of_uint64 n)
 end

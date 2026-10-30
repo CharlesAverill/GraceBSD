@@ -1,0 +1,54 @@
+(* Hardware primitives *)
+structure Hw = struct
+    (* HHDM offset *)
+    val hhdm_off =
+        let
+            val buf = Word8Array.array 8 (Word8.fromInt 0)
+        in
+        #(get_hhdm) "" buf;
+        Bytes.uint64_of_buf buf
+        end
+
+    (* Read [len] bytes from memory address [addr] *)
+    fun mem_read (addr : int) (len : int) =
+        let
+            (* The first 8 bytes hold the address; C fills the len bytes after
+               them, taking len from the buffer's length *)
+            val buf = Word8Array.array (Bytes.size_of_uint64_buf + len) (Word8.fromInt 0)
+            val out = Word8Array.array len (Word8.fromInt 0)
+        in
+        Word8Array.copy (Bytes.buf_of_uint64 addr) 0 Bytes.size_of_uint64_buf buf 0;
+        #(mem_read) "" buf;
+        Word8Array.copy buf Bytes.size_of_uint64_buf len out 0;
+        out
+        end
+
+    (* Read 32 bits from memory *)
+    fun mem_read32 (addr : int) =
+        let
+            val buf = Word8Array.array Bytes.size_of_uint64_buf (Word8.fromInt 0)
+        in
+        Word8Array.copy (Bytes.buf_of_uint64 addr) 0 Bytes.size_of_uint64_buf buf 0;
+        #(mem_read32) "" buf;
+        Bytes.uint64_of_buf buf
+        end
+
+    (* Read 64 bits from memory *)
+    fun mem_read64 (addr : int) =
+        let
+            val buf = Word8Array.array Bytes.size_of_uint64_buf (Word8.fromInt 0)
+        in
+        Word8Array.copy (Bytes.buf_of_uint64 addr) 0 Bytes.size_of_uint64_buf buf 0;
+        #(mem_read64) "" buf;
+        Bytes.uint64_of_buf buf
+        end
+
+    (* Read [len] bytes from physical memory address [addr] *)
+    fun pmem_read (addr : int) = mem_read (hhdm_off + addr)
+
+    (* Read 32 bits from physical memory address [addr] *)
+    fun pmem_read32 (addr : int) = mem_read32 (hhdm_off + addr)
+
+    (* Read 64 bits from physical memory address [addr] *)
+    fun pmem_read64 (addr : int) = mem_read64 (hhdm_off + addr)
+end

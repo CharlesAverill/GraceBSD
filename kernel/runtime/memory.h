@@ -17,4 +17,7 @@ int memcmp(const void* s1, const void* s2, size_t n);
 #define memmove __builtin_memmove
 #define memcmp  __builtin_memcmp
 
+// HHDM offset
+extern uint64_t hhdm_off;
+
 #endif

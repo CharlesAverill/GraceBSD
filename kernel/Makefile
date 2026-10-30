@@ -288,6 +288,7 @@ override ORDERED_CMLFILES := $(shell \
 		prov=$$($(CML_STRUCTURE) $$f | head -n 1); \
 		prov=$${prov:-main}; \
 		echo "$$prov $$prov"; \
+		if [ "$$prov" != main ]; then echo "$$prov main"; fi; \
 		for r in $$(grep -oE '\b[A-Z][A-Za-z0-9_]*\.' $$f | tr -d . | sort -u); do \
 			if [ "$$r" != "$$prov" ] && echo " $(CML_MODULES) " | grep -q " $$r "; then \
 				echo "$$r $$prov"; \

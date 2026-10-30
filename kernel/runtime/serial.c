@@ -57,8 +57,7 @@ char serial_getc(void) {
     char c = inb(COM1);
     if (c == '\r')
         serial_putc('\n');
-    else
-        serial_putc(c);
+    serial_putc(c);
     return c;
 }
 
@@ -109,6 +108,24 @@ void serial_write_int(int64_t x) {
     if (x < 0) {
         *--p = '-';
     }
+
+    serial_write(p);
+}
+
+#define MAX_HEX_STR_LEN 19
+
+void serial_write_hex(uint64_t x) {
+    char buf[MAX_HEX_STR_LEN];
+    char* p = buf + sizeof(buf);
+
+    *--p = '\0';
+    do {
+        *--p = "0123456789abcdef"[x & 0xf];
+        x >>= 4;
+    } while (x > 0);
+
+    *--p = 'x';
+    *--p = '0';
 
     serial_write(p);
 }

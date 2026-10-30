@@ -11,6 +11,7 @@ void serial_write(char* s);
 void serial_writen(char* s, size_t len);
 size_t serial_readn(char* s, size_t len);
 void serial_write_int(int64_t x);
+void serial_write_hex(uint64_t x);
 int64_t serial_read_int(void);
 
 #define COM1 0x3F8
