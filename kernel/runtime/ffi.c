@@ -65,7 +65,7 @@ FFI(get_hhdm) {
     bytes_of_uint64(hhdm_off, args);
 }
 
-// args holds the address as 8 bytes, then the space to read into.
+// args holds the address as 8 bytes, then the space to read into
 FFI(mem_read) {
     if (args_length < SIZE_OF_INT64) {
         serial_write("mem_read: expected at least 8 bytes\n");
@@ -98,4 +98,39 @@ FFI(mem_read64) {
 
     volatile uint64_t* addr = (uint64_t*)uint64_of_bytes(args);
     bytes_of_uint64(*addr, args);
+}
+
+// args holds the address as 8 bytes, then the bytes to write
+FFI(mem_write) {
+    if (args_length < SIZE_OF_INT64) {
+        serial_write("mem_write: expected at least 8 bytes\n");
+        return;
+    }
+
+    char* addr = (char*)uint64_of_bytes(args);
+    for (long i = 0; i < args_length - SIZE_OF_INT64; i++) {
+        addr[i] = args[SIZE_OF_INT64 + i];
+    }
+}
+
+// Write 32 bits into memory
+FFI(mem_write32) {
+    if (args_length != 2 * SIZE_OF_INT64) {
+        serial_write("mem_read32: expected 16 bytes\n");
+        return;
+    }
+
+    volatile uint32_t* addr = (uint32_t*)uint64_of_bytes(args);
+    *addr                   = (uint32_t)uint64_of_bytes(args + SIZE_OF_INT64);
+}
+
+// Write 64 bits into memory
+FFI(mem_write64) {
+    if (args_length != 2 * SIZE_OF_INT64) {
+        serial_write("mem_read64: expected 16 bytes\n");
+        return;
+    }
+
+    volatile uint64_t* addr = (uint64_t*)uint64_of_bytes(args);
+    *addr                   = (uint64_t)uint64_of_bytes(args + SIZE_OF_INT64);
 }

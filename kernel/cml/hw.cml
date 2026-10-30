@@ -12,12 +12,9 @@ structure Hw = struct
     (* Read [len] bytes from memory address [addr] *)
     fun mem_read (addr : int) (len : int) =
         let
-            (* The first 8 bytes hold the address; C fills the len bytes after
-               them, taking len from the buffer's length *)
-            val buf = Word8Array.array (Bytes.size_of_uint64_buf + len) (Word8.fromInt 0)
+            val buf = Bytes.append_w8 (Bytes.buf_of_uint64 addr) (Word8Array.array len (Word8.fromInt 0))
             val out = Word8Array.array len (Word8.fromInt 0)
         in
-        Word8Array.copy (Bytes.buf_of_uint64 addr) 0 Bytes.size_of_uint64_buf buf 0;
         #(mem_read) "" buf;
         Word8Array.copy buf Bytes.size_of_uint64_buf len out 0;
         out
@@ -26,9 +23,8 @@ structure Hw = struct
     (* Read 32 bits from memory *)
     fun mem_read32 (addr : int) =
         let
-            val buf = Word8Array.array Bytes.size_of_uint64_buf (Word8.fromInt 0)
+            val buf = Bytes.buf_of_uint64 addr
         in
-        Word8Array.copy (Bytes.buf_of_uint64 addr) 0 Bytes.size_of_uint64_buf buf 0;
         #(mem_read32) "" buf;
         Bytes.uint64_of_buf buf
         end
@@ -36,12 +32,23 @@ structure Hw = struct
     (* Read 64 bits from memory *)
     fun mem_read64 (addr : int) =
         let
-            val buf = Word8Array.array Bytes.size_of_uint64_buf (Word8.fromInt 0)
+            val buf = Bytes.buf_of_uint64 addr
         in
-        Word8Array.copy (Bytes.buf_of_uint64 addr) 0 Bytes.size_of_uint64_buf buf 0;
         #(mem_read64) "" buf;
         Bytes.uint64_of_buf buf
         end
+
+    (* Write the bytes of [data] to memory address [addr] *)
+    fun mem_write (addr : int) (data : byte_array) =
+        #(mem_write) "" (Bytes.append_w8 (Bytes.buf_of_uint64 addr) data)
+
+    (* Write the low 32 bits of [value] to memory address [addr] *)
+    fun mem_write32 (addr : int) (value : int) =
+        #(mem_write32) "" (Bytes.append_w8 (Bytes.buf_of_uint64 addr) (Bytes.buf_of_uint64 value))
+
+    (* Write [value], modulo 2^64, to memory address [addr] *)
+    fun mem_write64 (addr : int) (value : int) =
+        #(mem_write64) "" (Bytes.append_w8 (Bytes.buf_of_uint64 addr) (Bytes.buf_of_uint64 value))
 
     (* Read [len] bytes from physical memory address [addr] *)
     fun pmem_read (addr : int) = mem_read (hhdm_off + addr)
@@ -51,4 +58,13 @@ structure Hw = struct
 
     (* Read 64 bits from physical memory address [addr] *)
     fun pmem_read64 (addr : int) = mem_read64 (hhdm_off + addr)
+
+    (* Write the bytes of [data] to physical memory address [addr] *)
+    fun pmem_write (addr : int) = mem_write (hhdm_off + addr)
+
+    (* Write the low 32 bits of [value] to physical memory address [addr] *)
+    fun pmem_write32 (addr : int) = mem_write32 (hhdm_off + addr)
+
+    (* Write [value], modulo 2^64, to physical memory address [addr] *)
+    fun pmem_write64 (addr : int) = mem_write64 (hhdm_off + addr)
 end
