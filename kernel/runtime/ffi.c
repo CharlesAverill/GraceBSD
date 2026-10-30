@@ -80,7 +80,7 @@ FFI(mem_read) {
 
 // Read 32 bits from memory
 FFI(mem_read32) {
-    if (args_length < SIZE_OF_INT64) {
+    if (args_length != SIZE_OF_INT64) {
         serial_write("mem_read32: expected 8 bytes\n");
         return;
     }
@@ -91,7 +91,7 @@ FFI(mem_read32) {
 
 // Read 64 bits from memory
 FFI(mem_read64) {
-    if (args_length < SIZE_OF_INT64) {
+    if (args_length != SIZE_OF_INT64) {
         serial_write("mem_read64: expected 8 bytes\n");
         return;
     }
@@ -116,7 +116,7 @@ FFI(mem_write) {
 // Write 32 bits into memory
 FFI(mem_write32) {
     if (args_length != 2 * SIZE_OF_INT64) {
-        serial_write("mem_read32: expected 16 bytes\n");
+        serial_write("mem_write32: expected 16 bytes\n");
         return;
     }
 
@@ -127,7 +127,7 @@ FFI(mem_write32) {
 // Write 64 bits into memory
 FFI(mem_write64) {
     if (args_length != 2 * SIZE_OF_INT64) {
-        serial_write("mem_read64: expected 16 bytes\n");
+        serial_write("mem_write64: expected 16 bytes\n");
         return;
     }
 
