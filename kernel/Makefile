@@ -112,6 +112,7 @@ override CPPFLAGS := \
     -nostdinc \
     -I arch/x86_64 \
     -I runtime \
+    -I nanoprintf \
     -I limine-protocol/include \
     -isystem freestanding-c-hdrs/include \
     $(CPPFLAGS) \
@@ -393,7 +394,7 @@ clean:
 # Remove everything built and generated including downloaded dependencies.
 .PHONY: distclean
 distclean: clean
-	rm -rf .deps-obtained .cache compile_commands.json freestanding-c-hdrs freestanding-lgrt limine-protocol
+	rm -rf .deps-obtained .cache compile_commands.json freestanding-c-hdrs freestanding-lgrt limine-protocol nanoprintf
 	rm -rf $(TOOLS_DIR)/cake-x64-64 $(TOOLS_DIR)/cake-x64-64.tar.gz
 
 # Install the final built executable to its final on-root location. Not

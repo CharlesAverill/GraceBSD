@@ -1,5 +1,8 @@
 (* Hardware primitives *)
 structure Hw = struct
+    (* Halt and Catch Fire *)
+    fun hcf () = #(hcf) "" Bytes.empty_buf
+
     (* HHDM offset *)
     val hhdm_off =
         let

@@ -25,4 +25,11 @@ BraceWrapping:
   SplitEmptyNamespace: false
 Cpp11BracedListStyle: false
 SpaceInEmptyBlock: true
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+  AlignCompound: false
+  PadOperators: true
+AlignArrayOfStructures: Left
 ---

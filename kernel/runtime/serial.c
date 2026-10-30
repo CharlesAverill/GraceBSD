@@ -1,5 +1,7 @@
 #include "serial.h"
 
+#include "nanoprintf.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -93,41 +95,11 @@ size_t serial_readn(char* s, size_t len) {
 #define MAX_INT_STR_LEN 21
 
 void serial_write_int(int64_t x) {
-    char buf[MAX_INT_STR_LEN];
-    char* p = buf + sizeof(buf);
-
-    // Work on the magnitude as unsigned, since -INT64_MIN overflows int64_t.
-    uint64_t mag = x < 0 ? -(uint64_t)x : (uint64_t)x;
-
-    *--p = '\0';
-    do {
-        *--p = '0' + mag % 10;
-        mag /= 10;
-    } while (mag > 0);
-
-    if (x < 0) {
-        *--p = '-';
-    }
-
-    serial_write(p);
+    serial_printf("%lld", (long long)x);
 }
 
-#define MAX_HEX_STR_LEN 19
-
 void serial_write_hex(uint64_t x) {
-    char buf[MAX_HEX_STR_LEN];
-    char* p = buf + sizeof(buf);
-
-    *--p = '\0';
-    do {
-        *--p = "0123456789abcdef"[x & 0xf];
-        x >>= 4;
-    } while (x > 0);
-
-    *--p = 'x';
-    *--p = '0';
-
-    serial_write(p);
+    serial_printf("0x%llx", (unsigned long long)x);
 }
 
 int64_t atol(char* s) {
@@ -157,4 +129,23 @@ int64_t serial_read_int(void) {
     char buf[MAX_INT_STR_LEN];
     serial_readn(buf, MAX_INT_STR_LEN);
     return atol(buf);
+}
+
+static void serial_npf_putc(int c, void* ctx) {
+    (void)ctx;
+    if (c == '\n') {
+        serial_putc('\r');
+    }
+    serial_putc((char)c);
+}
+
+void serial_vprintf(const char* fmt, va_list args) {
+    npf_vpprintf(serial_npf_putc, NULL, fmt, args);
+}
+
+void serial_printf(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    serial_vprintf(fmt, args);
+    va_end(args);
 }

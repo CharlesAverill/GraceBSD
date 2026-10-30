@@ -1,0 +1,48 @@
+(* Log statements and fatal errors, implemented in runtime/logging.c *)
+structure Log = struct
+    (* Represents the severity of a log statement *)
+    datatype log_type =
+        Log_None
+      | Log_Debug
+      | Log_Info
+      | Log_Warning
+      | Log_Error
+      | Log_Critical
+
+    (* Must match the order of LogLevel in logging.h *)
+    fun int_of_log (l : log_type) =
+        case l of
+          Log_None => 0
+        | Log_Debug => 1
+        | Log_Info => 2
+        | Log_Warning => 3
+        | Log_Error => 4
+        | Log_Critical => 5
+
+    (* For exits, the code reported with the message *)
+    datatype return_code =
+        Rc_Ok
+      | Rc_Error
+      | Rc_Memory_Error
+
+    (* Must match the order of ReturnCode in logging.h *)
+    fun int_of_rc (rc : return_code) =
+        case rc of
+          Rc_Ok => 0
+        | Rc_Error => 1
+        | Rc_Memory_Error => 2
+
+    (* A fatal log statement that immediately halts the machine *)
+    fun fatal (rc : return_code) (msg : string) =
+        #(fatal) msg (Bytes.buf_of_uint64 (int_of_rc rc))
+
+    (* Prints [msg] if [log_level] is at least the global log level *)
+    fun log (log_level : log_type) (msg : string) =
+        #(log) msg (Bytes.buf_of_uint64 (int_of_log log_level))
+
+    fun debug (msg : string) = log Log_Debug msg
+    fun info (msg : string) = log Log_Info msg
+    fun warning (msg : string) = log Log_Warning msg
+    fun err (msg : string) = log Log_Error msg
+    fun critical (msg : string) = log Log_Critical msg
+end

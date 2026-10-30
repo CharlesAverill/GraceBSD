@@ -1,7 +1,7 @@
 #include <limine.h>
 #include <stddef.h>
 
-#include "serial.h"
+#include "logging.h"
 
 // Scale an 8-bit colour channel value to the size the framebuffer gives the
 // channel and move it into place within a pixel.
@@ -50,7 +50,7 @@ void fb_pattern(struct limine_framebuffer* fb, const uint32_t* pattern, uint16_t
     size_t out_w = w;
     size_t out_h = h;
     if (fb->width < out_w || fb->height < out_h) {
-        serial_write("Downsampling splash\n");
+        debug("Downsampling splash");
         if ((uint64_t)fb->width * h < (uint64_t)fb->height * w) {
             out_w = fb->width;
             out_h = (size_t)((uint64_t)h * fb->width / w);
@@ -61,11 +61,11 @@ void fb_pattern(struct limine_framebuffer* fb, const uint32_t* pattern, uint16_t
     }
 
     // Draw top-left color to entire framebuffer
-    serial_write("Filling framebuffer\n");
+    debug("Filling framebuffer");
     fb_fill(fb, pattern[0]);
 
     // Draw splash, centered
-    serial_write("Drawing splash\n");
+    debug("Drawing splash");
     size_t start_x = (fb->width - out_w) / 2;
     size_t start_y = (fb->height - out_h) / 2;
     for (size_t y = 0; y < out_h; y++) {
