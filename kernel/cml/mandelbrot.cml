@@ -1,0 +1,66 @@
+(* Print the mandelbrot set *)
+structure Mandelbrot = struct
+  val width  = 90
+  val height = 49
+  val maxIter = 100
+  val scale = 4096
+
+  val xMin = ~2 * scale           (* -2.0 *)
+  val xMax = scale div 2          (*  0.5 *)
+  val yMin = ~(12 * scale) div 10 (* -1.2 *)
+  val yMax = (12 * scale) div 10  (*  1.2 *)
+
+  val charset = " .:-=+*#%@"
+  val numChars = String.size charset
+
+  fun selectChar iter =
+      if iter = maxIter then #"@"
+      else String.sub charset ((iter * numChars) div maxIter)
+
+  (* Multiply two fixed-point values *)
+  fun mul (a, b) = (a * b) div scale
+
+  fun mandelLoop (cr, ci) =
+      let
+          fun loop (zr, zi, count) =
+              if count >= maxIter then maxIter
+              else if mul (zr, zr) + mul (zi, zi) > 4 * scale then count
+              else
+                  let
+                      val zr_next = mul (zr, zr) - mul (zi, zi) + cr
+                      val zi_next = 2 * mul (zr, zi) + ci
+                  in
+                      loop (zr_next, zi_next, count + 1)
+                  end
+      in
+          loop (0, 0, 0)
+      end
+
+  fun render () =
+      let
+          fun loopY y =
+              if y >= height then ()
+              else
+                  let
+                      val ci = yMin + (y * (yMax - yMin)) div height
+
+                      fun loopX x =
+                          if x >= width then ()
+                          else
+                              let
+                                  val cr = xMin + (x * (xMax - xMin)) div width
+                                  val iter = mandelLoop (cr, ci)
+                                  val ch = selectChar iter
+                              in
+                                  Render.print (String.str ch);
+                                  loopX (x + 1)
+                              end
+                  in
+                      loopX 0;
+                      Render.print "\n";
+                      loopY (y + 1)
+                  end
+      in
+          loopY 0
+      end
+end

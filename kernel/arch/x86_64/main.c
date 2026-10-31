@@ -6,6 +6,7 @@
 
 #include "cakeml.h"
 #include "framebuffer.h"
+#include "gdt.h"
 #include "generated/splash_data.h"
 #include "hw.h"
 #include "logging.h"
@@ -92,6 +93,9 @@ void kmain(void) {
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
         hcf();
     }
+
+    // Set up the Global Descriptor Table
+    load_gdt();
 
     // Set up the UART console
     serial_init();

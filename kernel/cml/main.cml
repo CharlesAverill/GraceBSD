@@ -2,6 +2,7 @@ fun main () =
     let
         fun factorial n =
             if n = 0 then 1 else n * factorial (n - 1)
+        val _ = Mandelbrot.render ()
         val _ = Render.print "What's your name? "
         val name = Render.readln 10
     in
