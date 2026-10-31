@@ -1,3 +1,5 @@
+#include "fonts.h"
+#include "framebuffer.h"
 #include "hw.h"
 #include "logging.h"
 #include "serial.h"
@@ -34,6 +36,15 @@ FFI(serial_readn) {
 
     uint64_t len = serial_readn((char*)(args + SIZE_OF_INT64), args_length - SIZE_OF_INT64);
     bytes_of_uint64(len, args);
+}
+
+FFI(serial_read_char) {
+    if (args_length != 1) {
+        error("FFI serial_read_char: expected 1 byte");
+        return;
+    }
+
+    args[0] = (unsigned char)serial_getc_raw();
 }
 
 // args holds a signed 64-bit integer as 8 bytes of little-endian two's complement
@@ -186,6 +197,44 @@ FFI(load_mmap_entry) {
     bytes_of_uint64(mmap_entry->type, args + 2 * SIZE_OF_INT64);
 }
 
+FFI(n_framebuffers) {
+    if (args_length != SIZE_OF_INT64) {
+        error("FFI n_framebuffers: expected 8 bytes");
+        return;
+    }
+
+    bytes_of_uint64(num_framebuffers, args);
+}
+
+// The number of 8-byte fields returned by load_framebuffer
+#define FRAMEBUFFER_FIELDS 12
+
+// args holds the index in its first 8 bytes, and receives the framebuffer's
+// address, width, height, pitch, bpp and memory model, then the size and shift
+// of its red, green and blue masks
+FFI(load_framebuffer) {
+    if (args_length != FRAMEBUFFER_FIELDS * SIZE_OF_INT64) {
+        error("FFI load_framebuffer: expected %d bytes", FRAMEBUFFER_FIELDS * SIZE_OF_INT64);
+        return;
+    }
+
+    size_t i = uint64_of_bytes(args);
+    if (i >= num_framebuffers) {
+        error("FFI load_framebuffer: index %lu out of range", i);
+        return;
+    }
+
+    struct limine_framebuffer* fb       = framebuffers[i];
+    uint64_t fields[FRAMEBUFFER_FIELDS] = {
+        (uint64_t)fb->address, fb->width,           fb->height,         fb->pitch,           fb->bpp,
+        fb->memory_model,      fb->red_mask_size,   fb->red_mask_shift, fb->green_mask_size, fb->green_mask_shift,
+        fb->blue_mask_size,    fb->blue_mask_shift,
+    };
+    for (int k = 0; k < FRAMEBUFFER_FIELDS; k++) {
+        bytes_of_uint64(fields[k], args + k * SIZE_OF_INT64);
+    }
+}
+
 FFI(cml_heap) {
     if (args_length != SIZE_OF_INT64) {
         error("FFI cml_heap: expected 8 bytes");
@@ -211,4 +260,74 @@ FFI(cml_stackend) {
     }
 
     bytes_of_uint64((uint64_t)cml_stackend, args);
+}
+
+FFI(width_of_font) {
+    if (args_length != SIZE_OF_INT64) {
+        error("FFI width_of_font: expected 8 bytes");
+        return;
+    }
+
+    bytes_of_uint64(width_of_Font((Font)uint64_of_bytes(args)), args);
+}
+
+FFI(height_of_font) {
+    if (args_length != SIZE_OF_INT64) {
+        error("FFI height_of_font: expected 8 bytes");
+        return;
+    }
+
+    bytes_of_uint64(height_of_Font((Font)uint64_of_bytes(args)), args);
+}
+
+FFI(render_glyph) {
+    if (args_length != 4 * SIZE_OF_INT64) {
+        error("FFI render_glyph: expected font, char, x, y");
+        return;
+    }
+
+    render_glyph(uint64_of_bytes(args), uint64_of_bytes(args + SIZE_OF_INT64),
+                 uint64_of_bytes(args + 2 * SIZE_OF_INT64), uint64_of_bytes(args + 3 * SIZE_OF_INT64));
+}
+
+// The framebuffer whose pixels are at [address], or NULL
+static struct limine_framebuffer* framebuffer_at(uint64_t address) {
+    for (size_t i = 0; i < num_framebuffers; i++) {
+        if ((uint64_t)framebuffers[i]->address == address) {
+            return framebuffers[i];
+        }
+    }
+    return NULL;
+}
+
+FFI(scroll_framebuffer) {
+    if (args_length != 2 * SIZE_OF_INT64) {
+        error("FFI scroll_framebuffer: expected framebuffer address, h");
+        return;
+    }
+
+    struct limine_framebuffer* fb = framebuffer_at(uint64_of_bytes(args));
+    if (fb == NULL) {
+        error("FFI scroll_framebuffer: no framebuffer at 0x%lx", uint64_of_bytes(args));
+        return;
+    }
+
+    fb_scroll(fb, (uint16_t)uint64_of_bytes(args + SIZE_OF_INT64));
+}
+
+FFI(clear_framebuffer_area) {
+    if (args_length != 5 * SIZE_OF_INT64) {
+        error("FFI clear_framebuffer_area: expected framebuffer address, x, y, w, h");
+        return;
+    }
+
+    struct limine_framebuffer* fb = framebuffer_at(uint64_of_bytes(args));
+    if (fb == NULL) {
+        error("FFI clear_framebuffer_area: no framebuffer at 0x%lx", uint64_of_bytes(args));
+        return;
+    }
+
+    fb_clear_area(
+        fb, (uint16_t)uint64_of_bytes(args + SIZE_OF_INT64), (uint16_t)uint64_of_bytes(args + 2 * SIZE_OF_INT64),
+        (uint16_t)uint64_of_bytes(args + 3 * SIZE_OF_INT64), (uint16_t)uint64_of_bytes(args + 4 * SIZE_OF_INT64));
 }

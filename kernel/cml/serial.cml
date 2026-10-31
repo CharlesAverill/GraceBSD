@@ -13,6 +13,15 @@ structure Serial = struct
             Word8Array.substring buf Bytes.size_of_uint64_buf (Bytes.uint64_of_buf buf)
         end
 
+    (* Wait for one character from COM1, without echoing it *)
+    fun read_char () =
+        let
+            val buf = Word8Array.array 1 (Word8.fromInt 0)
+        in
+        #(serial_read_char) "" buf;
+        Char.chr (Word8.toInt (Word8Array.sub buf 0))
+        end
+
     (* Write a string to COM1 and print a newline *)
     fun writeln (s : string) =
         #(serial_write) (s ^ "\n") Bytes.empty_buf

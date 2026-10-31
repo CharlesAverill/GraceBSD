@@ -2,14 +2,14 @@ fun main () =
     let
         fun factorial n =
             if n = 0 then 1 else n * factorial (n - 1)
-        val _ = Serial.write "What's your name? "
-        val name = Serial.readn 10
+        val _ = Render.print "What's your name? "
+        val name = Render.readln 10
     in
-        Serial.writeln ("Hello, " ^ name);
-        Serial.write_int 15;
-        Serial.write "! = ";
-        Serial.write_int (factorial 15);
-        Serial.writeln ""
+        Render.println ("Hello, " ^ name);
+        Render.print_int 15;
+        Render.print "! = ";
+        Render.print_int (factorial 15);
+        Render.println ""
     end;
 
 val _ = main ()

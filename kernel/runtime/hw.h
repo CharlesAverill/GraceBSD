@@ -19,4 +19,9 @@ extern uint8_t* cml_heap;
 extern uint8_t* cml_stack;
 extern uint8_t* cml_stackend;
 
+// Framebuffers
+extern struct limine_framebuffer** framebuffers;
+extern size_t num_framebuffers;
+#define FB_MAIN (framebuffers[0])
+
 #endif

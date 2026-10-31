@@ -1,0 +1,36 @@
+(* Corresponds with fonts.h *)
+structure Font = struct
+    datatype font = TS_8x8 | TS_8x14 | TS_8x16
+
+    fun int_of_font (f : font) =
+        case f of
+          TS_8x8 => 0
+        | TS_8x14 => 1
+        | TS_8x16 => 2
+
+    fun width_of_font (f : font) =
+        let
+            val buf = Bytes.buf_of_uint64 (int_of_font f)
+        in
+        #(width_of_font) "" buf;
+        Bytes.uint64_of_buf buf
+        end
+
+    fun height_of_font (f : font) =
+        let
+            val buf = Bytes.buf_of_uint64 (int_of_font f)
+        in
+        #(height_of_font) "" buf;
+        Bytes.uint64_of_buf buf
+        end
+
+    fun render_glyph (f : font) (c : char) (x : int) (y : int) =
+        let
+            val f_buf = Bytes.buf_of_uint64 (int_of_font f)
+            val c_buf = Bytes.buf_of_uint64 (Char.ord c)
+            val x_buf = Bytes.buf_of_uint64 x
+            val y_buf = Bytes.buf_of_uint64 y
+        in
+        #(render_glyph) "" (Bytes.append_w8 f_buf (Bytes.append_w8 c_buf (Bytes.append_w8 x_buf y_buf)))
+        end
+end

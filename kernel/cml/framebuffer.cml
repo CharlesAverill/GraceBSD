@@ -1,0 +1,63 @@
+(* Framebuffer information *)
+structure Framebuffer = struct
+    datatype color_mask = Mask int int
+
+    (* Virtual address, width and height in pixels, pitch in bytes per row, bits
+       per pixel, Limine memory model, and red, green and blue masks *)
+    datatype framebuffer =
+        Framebuffer int int int int int int color_mask color_mask color_mask
+
+    fun address (Framebuffer a _ _ _ _ _ _ _ _) = a
+    fun width (Framebuffer _ w _ _ _ _ _ _ _) = w
+    fun height (Framebuffer _ _ h _ _ _ _ _ _) = h
+    fun pitch (Framebuffer _ _ _ p _ _ _ _ _) = p
+    fun bpp (Framebuffer _ _ _ _ b _ _ _ _) = b
+    fun memory_model (Framebuffer _ _ _ _ _ m _ _ _) = m
+    fun red_mask (Framebuffer _ _ _ _ _ _ r _ _) = r
+    fun green_mask (Framebuffer _ _ _ _ _ _ _ g _) = g
+    fun blue_mask (Framebuffer _ _ _ _ _ _ _ _ b) = b
+
+    (* List of all framebuffers *)
+    val framebuffers : framebuffer list =
+        let
+            val lenbuf = Bytes.buf_of_uint64 0
+            val _ = #(n_framebuffers) "" lenbuf
+            val len = Bytes.uint64_of_buf lenbuf
+            val fbbuf = Word8Array.array (12 * Bytes.size_of_uint64_buf) (Word8.fromInt 0)
+            fun field (k : int) = Bytes.uint64_of_buf_at fbbuf (k * Bytes.size_of_uint64_buf)
+            fun load_framebuffer (i : int) =
+                let
+                    val _ = Word8Array.copy (Bytes.buf_of_uint64 i) 0 Bytes.size_of_uint64_buf fbbuf 0
+                    val _ = #(load_framebuffer) "" fbbuf
+                in
+                Framebuffer (field 0) (field 1) (field 2) (field 3) (field 4) (field 5)
+                    (Mask (field 6) (field 7)) (Mask (field 8) (field 9)) (Mask (field 10) (field 11))
+                end
+            fun load_framebuffers (i : int) =
+                if i >= len then []
+                else
+                    let
+                        val fb = load_framebuffer i
+                    in
+                    fb :: load_framebuffers (i + 1)
+                    end
+        in
+        load_framebuffers 0
+        end
+
+    val primary_fb =
+        case framebuffers of
+          [] => Log.fatal Log.Rc_Init_Error "primary_fb found no framebuffers"
+        | h :: _ => h
+
+    fun scroll_fb (f : framebuffer) (h : int) =
+        #(scroll_framebuffer) "" (Bytes.append_w8 (Bytes.buf_of_uint64 (address f)) (Bytes.buf_of_uint64 h))
+
+    (* Clear the w x h area of the primary framebuffer at (x, y) *)
+    fun clear_area (x : int) (y : int) (w : int) (h : int) =
+        #(clear_framebuffer_area) ""
+            (Bytes.append_w8 (Bytes.buf_of_uint64 (address primary_fb))
+                (Bytes.append_w8 (Bytes.buf_of_uint64 x)
+                    (Bytes.append_w8 (Bytes.buf_of_uint64 y)
+                        (Bytes.append_w8 (Bytes.buf_of_uint64 w) (Bytes.buf_of_uint64 h)))))
+end

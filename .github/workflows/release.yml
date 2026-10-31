@@ -3,14 +3,13 @@ name: Release
 on:
   push:
     branches: [main]
-    # Only the files that go into the ISO, so commits that can't change it
-    # (docs, licenses, formatting config) don't make a release
     paths:
       - "kernel/**"
       - "boot/**"
       - "Makefile"
       - "media/splash.bmp"
-      - "tools/bmp_to_rgb.py"
+      - "tools/*.py"
+      - "media/fonts/**"
       - ".github/workflows/release.yml"
 
 permissions:

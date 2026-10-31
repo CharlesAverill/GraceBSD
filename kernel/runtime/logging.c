@@ -12,7 +12,7 @@
 #include "serial.h"
 
 const LogInfo logInfoLevels[] = {
-    {LOG_NONE,      "",           ANSI_RESET           },
+    {LOG_NONE,      "",        ANSI_RESET           },
     { LOG_DEBUG,    "[DEBUG]", ANSI_BOLD            },
     { LOG_INFO,     "[INFO] ", ANSI_BOLD            },
     { LOG_WARNING,  "[WARN] ", ANSI_BOLD ANSI_YELLOW},

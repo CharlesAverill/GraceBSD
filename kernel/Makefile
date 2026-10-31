@@ -269,6 +269,15 @@ $(SPLASH_HEADER): $(SPLASH_BMP) $(BMP_CONVERTER)
 
 obj/arch/x86_64/main.c.o: $(SPLASH_HEADER)
 
+# Generated glyph headers, one per font in media/fonts
+FONT_DIR := ../media/fonts
+FONT_CONVERTER := ../tools/otb_to_header.py
+FONT_HEADERS := $(patsubst $(FONT_DIR)/%.otb,runtime/generated/font_%.h,$(wildcard $(FONT_DIR)/*.otb))
+
+runtime/generated/font_%.h: $(FONT_DIR)/%.otb $(FONT_CONVERTER)
+	mkdir -p "$(dir $@)"
+	python3 $(FONT_CONVERTER) $< $@
+
 # Use "find" to glob all *.c, *.S, and *.asm files in the tree and obtain the
 # object and header dependency file names.
 override SRCFILES := $(shell find -L arch runtime freestanding-lgrt/src cml -type f 2>/dev/null | LC_ALL=C sort)
@@ -278,6 +287,8 @@ override ASFILES := $(filter %.S,$(SRCFILES))
 override NASMFILES := $(filter %.asm,$(SRCFILES))
 override OBJ := $(addprefix obj/,$(CFILES:.c=.c.o) $(ASFILES:.S=.S.o) $(NASMFILES:.asm=.asm.o))
 override HEADER_DEPS := $(addprefix obj/,$(CFILES:.c=.c.d) $(ASFILES:.S=.S.d) $(NASMFILES:.asm=.asm.d))
+
+$(addprefix obj/,$(CFILES:.c=.c.o)): | $(FONT_HEADERS)
 # The CakeML compiler takes one program, so order the sources so each file comes
 # after the files whose structures it uses. A file defining no structure provides
 # "main". Only structures defined in cml/ count as dependencies, so basis library

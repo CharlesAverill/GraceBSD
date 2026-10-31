@@ -1,0 +1,123 @@
+(* Font rendering *)
+structure Render = struct
+    (* Cursor position (x, y) *)
+    datatype cursor = Cursor int int
+
+    fun cx (Cursor x _) = x
+    fun cy (Cursor _ y) = y
+
+    (* Reference to the current framebuffer cursor *)
+    val fb_cursor = Ref (Cursor 0 0)
+
+    (* Move the cursor to the start of the next line of h-pixel glyphs,
+       scrolling the screen up if that line wouldn't fit *)
+    fun newline (h : int) =
+        let
+            val y = cy (!fb_cursor)
+        in
+        if y + 2 * h > Framebuffer.height Framebuffer.primary_fb then (
+            Framebuffer.scroll_fb Framebuffer.primary_fb h;
+            fb_cursor := Cursor 0 y
+        ) else
+            fb_cursor := Cursor 0 (y + h)
+        end
+
+    (* Advance the cursor horizontally by a glyph of width w and height h, and
+       handle wrap, scrolling, and backspaces *)
+    fun advance_cursor (w : int) (h : int) =
+        let
+            val x = cx (!fb_cursor) + w
+            val y = cy (!fb_cursor)
+            val fb_w = Framebuffer.width Framebuffer.primary_fb
+        in
+        if w > 0 andalso x + w > fb_w then
+            (* The next glyph wouldn't fit on this line *)
+            newline h
+        else if x < 0 then
+            (* Back past the start of the line: to the last glyph of the
+               previous line, or stay at the top-left corner *)
+            if y + h < 0 then
+                fb_cursor := Cursor 0 0
+            else
+                fb_cursor := Cursor ((fb_w div (~ w) - 1) * (~ w)) (y + h)
+        else
+            fb_cursor := Cursor x y
+        end
+
+    fun draw_char (f : Font.font) (c : char) =
+        if c = #"\n" then
+            newline (Font.height_of_font f)
+        else (
+            Font.render_glyph f c (cx (!fb_cursor)) (cy (!fb_cursor));
+            advance_cursor (Font.width_of_font f) (Font.height_of_font f)
+        )
+
+    fun erase_char (f : Font.font) =
+        let
+            val w = Font.width_of_font f
+            val h = Font.height_of_font f
+        in
+        advance_cursor (~ w) (~ h);
+        Framebuffer.clear_area (cx (!fb_cursor)) (cy (!fb_cursor)) w h
+        end
+
+    fun draw_string (f : Font.font) (s : string) =
+        List.app (fn c => draw_char f c) (String.explode s)
+
+    (* The font print, println and print_int draw with *)
+    val default_font = Font.TS_8x14
+
+    (* Draw a string to the screen and also write it over serial *)
+    fun print (s : string) =
+        (Serial.write s;
+         draw_string default_font s)
+
+    (* Draw a string to the screen and also write it over serial, with a newline *)
+    fun println (s : string) = print (s ^ "\n")
+
+    (* Draw an int to the screen and also write it over serial *)
+    fun print_int (x : int) =
+        print (Int.toString x)
+
+    (* Read a line of up to max_len characters from COM1, echoing it to serial
+       and the screen. Backspace (BS or DEL) erases the last character, Enter
+       (CR or LF) ends the line, and escape sequences such as arrow keys are
+       ignored. Returns the line without the Enter. *)
+    fun readln (max_len : int) =
+        let
+            fun echo (c : char) =
+                (Serial.write (String.str c);
+                 draw_char default_font c)
+
+            (* Drop an escape sequence's ESC [ and final character *)
+            fun skip_escape () =
+                if Serial.read_char () = #"[" then (Serial.read_char (); ()) else ()
+
+            (* acc holds the characters read so far, most recent first *)
+            fun loop (acc : char list) (len : int) =
+                let
+                    val c = Serial.read_char ()
+                    val code = Char.ord c
+                in
+                if c = #"\r" orelse c = #"\n" then
+                    (Serial.write "\n";
+                     draw_char default_font #"\n";
+                     String.implode (List.rev acc))
+                else if code = 8 orelse code = 127 then
+                    (case acc of
+                       [] => loop acc len
+                     | _ :: rest =>
+                         (Serial.write "\b \b";
+                          erase_char default_font;
+                          loop rest (len - 1)))
+                else if code = 27 then
+                    (skip_escape (); loop acc len)
+                else if code < 32 orelse code > 126 orelse len >= max_len then
+                    loop acc len
+                else
+                    (echo c; loop (c :: acc) (len + 1))
+                end
+        in
+        loop [] 0
+        end
+end

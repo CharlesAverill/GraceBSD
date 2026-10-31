@@ -2,6 +2,7 @@
 #include <stddef.h>
 
 #include "logging.h"
+#include "memory.h"
 
 // Scale an 8-bit colour channel value to the size the framebuffer gives the
 // channel and move it into place within a pixel.
@@ -73,6 +74,42 @@ void fb_pattern(struct limine_framebuffer* fb, const uint32_t* pattern, uint16_t
         for (size_t x = 0; x < out_w; x++) {
             size_t pat_x                                            = x * w / out_w;
             fb_ptr[(y + start_y) * (fb->pitch / 4) + (x + start_x)] = fb_color(fb, pattern[pat_y * w + pat_x]);
+        }
+    }
+}
+
+// Draw a glyph at coordinates (x, y), filling white pixels and treating black pixels as transparent
+void fb_glyph(struct limine_framebuffer* fb, const uint32_t* glyph, uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+    volatile uint32_t* fb_ptr = fb->address;
+    for (size_t row = 0; row < h && y + row < fb->height; row++) {
+        for (size_t col = 0; col < w && x + col < fb->width; col++) {
+            uint32_t pixel = glyph[row * w + col];
+            if (pixel != 0) {
+                fb_ptr[(y + row) * (fb->pitch / 4) + (x + col)] = fb_color(fb, pixel);
+            }
+        }
+    }
+}
+
+// Scroll the framebuffer up by [h] pixels, clearing new rows
+void fb_scroll(struct limine_framebuffer* fb, uint16_t h) {
+    uint8_t* base = fb->address;
+    size_t rows   = h < fb->height ? fb->height - h : 0;
+
+    for (size_t row = 0; row < rows; row++) {
+        memcpy(base + row * fb->pitch, base + (row + h) * fb->pitch, fb->pitch);
+    }
+
+    // Clear the rows that were scrolled into view
+    memset(base + rows * fb->pitch, 0, (fb->height - rows) * fb->pitch);
+}
+
+// Clear a w x h area with its top-left corner at (x,y)
+void fb_clear_area(struct limine_framebuffer* fb, uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+    volatile uint32_t* fb_ptr = fb->address;
+    for (size_t row = y; row < (size_t)y + h && row < fb->height; row++) {
+        for (size_t col = x; col < (size_t)x + w && col < fb->width; col++) {
+            fb_ptr[row * (fb->pitch / 4) + col] = 0;
         }
     }
 }

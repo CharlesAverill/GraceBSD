@@ -58,6 +58,8 @@ void hcf(void) {
 uint64_t hhdm_off                                     = 0;
 LIMINE_PTR(struct limine_memmap_entry**) mmap_entries = NULL;
 size_t num_mmap_entries                               = 0;
+struct limine_framebuffer** framebuffers              = NULL;
+size_t num_framebuffers                               = 0;
 
 static const char* memmap_type_name(uint64_t type) {
     switch (type) {
@@ -101,8 +103,10 @@ void kmain(void) {
     }
 
     // Print the pattern to every framebuffer.
-    for (uint64_t i = 0; i < framebuffer_request.response->framebuffer_count; i++) {
-        struct limine_framebuffer* framebuffer = framebuffer_request.response->framebuffers[i];
+    framebuffers     = framebuffer_request.response->framebuffers;
+    num_framebuffers = framebuffer_request.response->framebuffer_count;
+    for (uint64_t i = 0; i < num_framebuffers; i++) {
+        struct limine_framebuffer* framebuffer = framebuffers[i];
 
         // Ensure the framebuffer has 32-bit RGB pixels, the only kind we handle.
         if (framebuffer->memory_model != LIMINE_FRAMEBUFFER_RGB || framebuffer->bpp != 32) {
@@ -111,8 +115,8 @@ void kmain(void) {
 
         fb_pattern(framebuffer, splash_pixels, SPLASH_WIDTH, SPLASH_HEIGHT);
 
-        // for (volatile unsigned int i = 0; i < UINT_MAX / 4; i++) { }
-        // fb_clear(framebuffer);
+        for (volatile unsigned int i = 0; i < UINT_MAX / 8; i++) { }
+        fb_clear(framebuffer);
     }
 
     // Print out memory map entries and select the largest one to use as kernel

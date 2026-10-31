@@ -52,11 +52,16 @@ void serial_putc(char c) {
     outb(COM1, c);
 }
 
-char serial_getc(void) {
+// Wait for a byte and return it, without echoing it
+char serial_getc_raw(void) {
     while (!serial_received())
         ;
 
-    char c = inb(COM1);
+    return inb(COM1);
+}
+
+char serial_getc(void) {
+    char c = serial_getc_raw();
     if (c == '\r')
         serial_putc('\n');
     serial_putc(c);
