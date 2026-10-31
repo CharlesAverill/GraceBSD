@@ -1,19 +1,64 @@
 bits 64
 section .text
 
+; CPU has pushed an error code
 %macro isr_err_stub 1
 isr_stub_%+%1:
-    call exception_handler
-    iretq
+    push %1                 ; vector
+    jmp isr_common
 %endmacro
 
+; CPU has not pushed an error code
 %macro isr_no_err_stub 1
 isr_stub_%+%1:
-    call exception_handler
-    iretq
+    push 0                  ; dummy error code
+    push %1                 ; vector
+    jmp isr_common
 %endmacro
 
 extern exception_handler
+
+; https://wiki.osdev.org/Interrupt_Service_Routines#Two-Stage_Assembly_Wrapping
+isr_common:
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    push rbp
+    push r8
+    push r9
+    push r10
+    push r11
+    push r12
+    push r13
+    push r14
+    push r15
+
+    mov rdi, rsp            ; struct interrupt_frame*
+    cld                     ; the System V ABI requires the direction flag clear
+    call exception_handler
+
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop r11
+    pop r10
+    pop r9
+    pop r8
+    pop rbp
+    pop rdi
+    pop rsi
+    pop rdx
+    pop rcx
+    pop rbx
+    pop rax
+
+    add rsp, 16             ; the vector and error code
+    iretq
+
 isr_no_err_stub 0
 isr_no_err_stub 1
 isr_no_err_stub 2
@@ -43,15 +88,15 @@ isr_no_err_stub 25
 isr_no_err_stub 26
 isr_no_err_stub 27
 isr_no_err_stub 28
-isr_no_err_stub 29
+isr_err_stub    29
 isr_err_stub    30
 isr_no_err_stub 31
 
 section .rodata
 global isr_stub_table
 isr_stub_table:
-%assign i 0 
-%rep    32 
+%assign i 0
+%rep    32
     dq isr_stub_%+i
-%assign i i+1 
+%assign i i+1
 %endrep

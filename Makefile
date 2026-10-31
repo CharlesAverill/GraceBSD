@@ -131,7 +131,7 @@ $(IMAGE_NAME).iso: limine-binary/limine kernel
 	mkdir -p iso_root/boot
 	cp kernel/bin/kernel iso_root/boot/
 	mkdir -p iso_root/boot/limine
-	cp boot/limine.conf limine-binary/limine-bios.sys limine-binary/limine-bios-cd.bin limine-binary/limine-uefi-cd.bin iso_root/boot/limine/
+	cp boot/limine.conf boot/finches*.png limine-binary/limine-bios.sys limine-binary/limine-bios-cd.bin limine-binary/limine-uefi-cd.bin iso_root/boot/limine/
 	mkdir -p iso_root/EFI/BOOT
 	cp limine-binary/BOOTX64.EFI iso_root/EFI/BOOT/
 	cp limine-binary/BOOTIA32.EFI iso_root/EFI/BOOT/
@@ -151,7 +151,7 @@ $(IMAGE_NAME).hdd: limine-binary/limine kernel
 	mformat -i $(IMAGE_NAME).hdd@@$(HDD_PART_OFFSET) -T $(HDD_PART_SECTORS) -h $(HDD_HEADS) -s $(HDD_SECTORS_PER_TRACK) ::
 	mmd -i $(IMAGE_NAME).hdd@@$(HDD_PART_OFFSET) ::/EFI ::/EFI/BOOT ::/boot ::/boot/limine
 	mcopy -i $(IMAGE_NAME).hdd@@$(HDD_PART_OFFSET) kernel/bin/kernel ::/boot
-	mcopy -i $(IMAGE_NAME).hdd@@$(HDD_PART_OFFSET) boot/limine.conf limine-binary/limine-bios.sys ::/boot/limine
+	mcopy -i $(IMAGE_NAME).hdd@@$(HDD_PART_OFFSET) boot/limine.conf boot/finches*.png limine-binary/limine-bios.sys ::/boot/limine
 	mcopy -i $(IMAGE_NAME).hdd@@$(HDD_PART_OFFSET) limine-binary/BOOTX64.EFI ::/EFI/BOOT
 	mcopy -i $(IMAGE_NAME).hdd@@$(HDD_PART_OFFSET) limine-binary/BOOTIA32.EFI ::/EFI/BOOT
 

@@ -12,13 +12,13 @@
 #include "serial.h"
 #include "tables/gdt.h"
 #include "tables/idt.h"
+#include "tables/pic.h"
 
-// Set the base revision to 6, this is recommended as this is the latest
-// base revision described by the Limine boot protocol specification.
-// See specification for further info.
-
+// TODO: Switch back to revision 6 eventually
+// Revision 5 masks the PIC so this will be revision 4 until I have enough infrastructure
+// to un-mask the PIC or start using the APIC
 __attribute__((used, section(".limine_requests"))) static volatile uint64_t limine_base_revision[] =
-    LIMINE_BASE_REVISION(6);
+    LIMINE_BASE_REVISION(4);
 
 // The Limine requests can be placed anywhere, but it is important that
 // the compiler does not optimise them away, so, usually, they should
@@ -49,6 +49,12 @@ __attribute__((used, section(".limine_requests"))) static volatile struct limine
 // To dereference a physical RAM address, you have to add the HHDM offset to the pointer
 __attribute__((used, section(".limine_requests"))) static volatile struct limine_hhdm_request hhdm_request = {
     .id = LIMINE_HHDM_REQUEST_ID, .revision = 0
+};
+
+// Request multiprocessor information, including the Multiple APIC Description Table (MADT) which is used
+// to set up the APIC chip for interrupts
+__attribute__((used, section(".limine_requests"))) static volatile struct limine_mp_request mp_request = {
+    .id = LIMINE_MP_REQUEST_ID, .revision = 0
 };
 
 void hcf(void) {
@@ -103,6 +109,8 @@ void kmain(void) {
     load_gdt();
     // Set up the Interrupt Descriptor Table
     idt_init();
+    // Remap the PIC
+    PIC_remap(0x20, 0x28);
 
     // Ensure we got a framebuffer.
     if (framebuffer_request.response == NULL || framebuffer_request.response->framebuffer_count < 1) {
