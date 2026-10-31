@@ -3,6 +3,15 @@ name: Release
 on:
   push:
     branches: [main]
+    # Only the files that go into the ISO, so commits that can't change it
+    # (docs, licenses, formatting config) don't make a release
+    paths:
+      - "kernel/**"
+      - "boot/**"
+      - "Makefile"
+      - "media/splash.bmp"
+      - "tools/bmp_to_rgb.py"
+      - ".github/workflows/release.yml"
 
 permissions:
   contents: write
@@ -31,7 +40,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="build-${{ github.run_number }}"
-          gh release create "$tag" GraceBSD.iso \
+          gh release create "$tag" GraceBSD.iso THIRD_PARTY_LICENSES \
             --target "${{ github.sha }}" \
             --title "GraceBSD build ${{ github.run_number }}" \
             --notes "Built from ${{ github.sha }}."
