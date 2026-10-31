@@ -82,6 +82,14 @@ static struct tss tss;
 #define DOUBLE_FAULT_STACK_SIZE (16 * 1024)
 static uint8_t double_fault_stack[DOUBLE_FAULT_STACK_SIZE] __attribute__((aligned(16)));
 
+// Stack for NMIs
+#define NMI_STACK_SIZE (16 * 1024)
+static uint8_t nmi_stack[NMI_STACK_SIZE] __attribute__((aligned(16)));
+
+// Stack for Machine Checks
+#define MACHINE_CHECK_STACK_SIZE (16 * 1024)
+static uint8_t machine_check_stack[MACHINE_CHECK_STACK_SIZE] __attribute__((aligned(16)));
+
 // https://wiki.osdev.org/GDT_Tutorial#Flat_/_Long_Mode_Setup
 #define N_STANDARD_GDT_ENTRIES 5
 #define N_LARGE_GDT_ENTRIES    1
@@ -152,7 +160,10 @@ void load_gdt(void) {
 
     reload_CS(KERNEL_DATA_SELECTOR);
 
-    tss.ist[DOUBLE_FAULT_IST - 1] = (uint64_t)(double_fault_stack + sizeof(double_fault_stack));
+    // Set up stacks for interrupts
+    tss.ist[DOUBLE_FAULT_IST - 1]  = (double_fault_stack + sizeof(double_fault_stack));
+    tss.ist[NMI_IST - 1]           = (nmi_stack + sizeof(nmi_stack));
+    tss.ist[MACHINE_CHECK_IST - 1] = (machine_check_stack + sizeof(machine_check_stack));
 
     __asm__ volatile("ltr %0" : : "r"((uint16_t)GDT_TSS_SELECTOR));
 }

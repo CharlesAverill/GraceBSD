@@ -50,9 +50,11 @@ static const char* exception_names[N_EXCEPTIONS] = {
 };
 
 // https://wiki.osdev.org/Interrupt_Vector_Table#CPU_Interrupt_Layout
-#define VECTOR_BREAKPOINT   3
-#define VECTOR_DOUBLE_FAULT 8
-#define VECTOR_PAGE_FAULT   14
+#define VECTOR_NMI           2
+#define VECTOR_BREAKPOINT    3
+#define VECTOR_DOUBLE_FAULT  8
+#define VECTOR_PAGE_FAULT    14
+#define VECTOR_MACHINE_CHECK 18
 
 static void log_registers(struct interrupt_frame* f) {
     error("  RIP=0x%016lx  CS=0x%lx  RFLAGS=0x%016lx", f->rip, f->cs, f->rflags);
@@ -127,7 +129,19 @@ void idt_init(void) {
     idtr.limit = (uint16_t)sizeof(idt_entry_t) * IDT_MAX_DESCRIPTORS - 1;
 
     for (uint8_t vector = 0; vector < N_EXCEPTIONS; vector++) {
-        uint8_t ist = vector == VECTOR_DOUBLE_FAULT ? DOUBLE_FAULT_IST : 0;
+        uint8_t ist = 0;
+        switch (vector) {
+        case VECTOR_DOUBLE_FAULT:
+            ist = DOUBLE_FAULT_IST;
+            break;
+        case VECTOR_NMI:
+            ist = NMI_IST;
+            break;
+        case VECTOR_MACHINE_CHECK:
+            ist = MACHINE_CHECK_IST;
+            break;
+        }
+
         idt_set_descriptor(vector, isr_stub_table[vector], 0x8E, ist);
     }
 

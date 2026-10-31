@@ -24,15 +24,6 @@ void push_event(struct event e) {
     eq.tail            = (eq.tail + 1) % EVENT_QUEUE_SIZE;
 }
 
-PollResult poll_event(struct event* e) {
-    if (event_queue_empty()) {
-        return POLL_FAILURE;
-    }
-
-    *e = eq.events[eq.head];
-    return POLL_SUCCESS;
-}
-
 static PollResult pop_event_internal(struct event* e) {
     if (event_queue_empty())
         return POLL_FAILURE;
