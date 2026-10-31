@@ -1,0 +1,59 @@
+(* Hardware interrupt events *)
+structure Events = struct
+    datatype event_type = Timer
+    type event_data = int
+
+    type event = event_type * event_data
+
+    fun int_of_event_type (e : event_type) =
+        case e of
+          Timer => 0
+
+    fun event_type_of_int (x : int) =
+        case x of
+          0 => Timer
+        | _ => Log.fatal Log.Rc_Error ("event_type_of_int out of range: " ^ Int.toString x)
+
+    datatype poll_result = PollSuccess | PollFailure
+
+    fun int_of_poll_result (p : poll_result) =
+        case p of
+          PollSuccess => 0
+        | PollFailure => 1
+
+    fun poll_result_of_int (x : int) =
+        case x of
+          0 => PollSuccess
+        | 1 => PollFailure
+        | _ => Log.fatal Log.Rc_Error ("poll_result_of_int out of range: " ^ Int.toString x)
+
+    (* Expects 3 64-bit ints: success, type, data *)
+    fun event_of_bytes (arr : byte_array) =
+        let
+            val succ = poll_result_of_int (Bytes.uint64_of_buf_at arr 0)
+            val ty = event_type_of_int (Bytes.uint64_of_buf_at arr Bytes.size_of_uint64_buf)
+            val data = Bytes.uint64_of_buf_at arr (2 * Bytes.size_of_uint64_buf)
+        in
+        case succ of
+          PollSuccess => Some (ty, data)
+        | PollFailure => None
+        end
+
+    fun pop_event () =
+        let
+            val buf = Word8Array.array (3 * Bytes.size_of_uint64_buf) (Word8.fromInt 0)
+        in
+        #(pop_event) "" buf;
+        event_of_bytes buf
+        end
+
+    fun wait_event () =
+        let
+            val buf = Word8Array.array (2 * Bytes.size_of_uint64_buf) (Word8.fromInt 0)
+        in
+        #(wait_event) "" buf;
+        case event_of_bytes (Bytes.append_w8 (Bytes.buf_of_uint64 0) buf) of
+          Some x => x
+        | None => Log.fatal Log.Rc_Error "wait_event got PollFailure, should be impossible"
+        end
+end

@@ -1,6 +1,8 @@
 // https://wiki.osdev.org/8259_PIC#Initialisation
 
-#include "serial.h"
+#include "pic.h"
+
+#include "io.h"
 
 #define PIC1         0x20 /* IO base address for master PIC */
 #define PIC2         0xA0 /* IO base address for slave PIC */
@@ -55,9 +57,9 @@ void PIC_remap(int offset1, int offset2) {
     outb(PIC2_DATA, ICW4_8086);
     io_wait();
 
-    // Unmask both PICs.
-    outb(PIC1_DATA, 0);
-    outb(PIC2_DATA, 0);
+    // Keep all IRQs masked except for IRQ 0 for the PIT (for now)
+    outb(PIC1_DATA, 0xFE);
+    outb(PIC2_DATA, 0xFF);
 }
 
 #define PIC_EOI 0x20 /* End-of-interrupt command code */
@@ -67,4 +69,22 @@ void PIC_sendEOI(uint8_t irq) {
         outb(PIC2_COMMAND, PIC_EOI);
 
     outb(PIC1_COMMAND, PIC_EOI);
+}
+
+#define PIC_READ_ISR 0x0b /* OCW3 irq service next CMD read */
+
+// https://wiki.osdev.org/8259_PIC#Handling_Spurious_IRQs
+bool PIC_is_spurious(uint8_t irq) {
+    if (irq == 7) {
+        outb(PIC1_COMMAND, PIC_READ_ISR);
+        return !(inb(PIC1_COMMAND) & 0x80);
+    }
+    if (irq == 15) {
+        outb(PIC2_COMMAND, PIC_READ_ISR);
+        if (!(inb(PIC2_COMMAND) & 0x80)) {
+            outb(PIC1_COMMAND, PIC_EOI);
+            return true;
+        }
+    }
+    return false;
 }

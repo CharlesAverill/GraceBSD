@@ -2,6 +2,18 @@ fun main () =
     let
         fun factorial n =
             if n = 0 then 1 else n * factorial (n - 1)
+
+        fun print_every_second (counter : int) =
+            case Events.wait_event () of
+              (Events.Timer, data) =>
+              if counter + 1 >= 100 then (
+                (* Render.println "Tick"; *)
+                Render.toggle_cursor ();
+                print_every_second 0
+              ) else
+                print_every_second (counter + 1)
+            | _ => print_every_second counter
+
         val _ = Mandelbrot.render ()
         val _ = Render.print "What's your name? "
         val name = Render.readln 10
@@ -10,7 +22,8 @@ fun main () =
         Render.print_int 15;
         Render.print "! = ";
         Render.print_int (factorial 15);
-        Render.println ""
+        Render.println "";
+        print_every_second 0
     end;
 
 val _ = main ()

@@ -2,6 +2,7 @@
 #define GRACE_IDT_H
 
 #include <stdint.h>
+typedef unsigned __int128 uint128_t;
 
 // https://wiki.osdev.org/Interrupts_Tutorial
 typedef struct {
@@ -26,6 +27,8 @@ struct interrupt_frame {
     uint64_t vector, error_code;
     uint64_t rip, cs, rflags, rsp, ss;
 };
+
+#define IDT_MAX_DESCRIPTORS 48
 
 void exception_handler(struct interrupt_frame* frame);
 void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags, uint8_t ist);

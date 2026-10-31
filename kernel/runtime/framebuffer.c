@@ -104,12 +104,12 @@ void fb_scroll(struct limine_framebuffer* fb, uint16_t h) {
     memset(base + rows * fb->pitch, 0, (fb->height - rows) * fb->pitch);
 }
 
-// Clear a w x h area with its top-left corner at (x,y)
-void fb_clear_area(struct limine_framebuffer* fb, uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+// Fill a w x h area with its top-left corner at (x,y) with value [val]
+void fb_fill_area(struct limine_framebuffer* fb, uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint32_t val) {
     volatile uint32_t* fb_ptr = fb->address;
     for (size_t row = y; row < (size_t)y + h && row < fb->height; row++) {
         for (size_t col = x; col < (size_t)x + w && col < fb->width; col++) {
-            fb_ptr[row * (fb->pitch / 4) + col] = 0;
+            fb_ptr[row * (fb->pitch / 4) + col] = val;
         }
     }
 }

@@ -1,7 +1,10 @@
 #include "idt.h"
 
+#include "events.h"
 #include "gdt.h"
+#include "io.h"
 #include "logging.h"
+#include "pic.h"
 
 __attribute__((aligned(0x10))) static idt_entry_t idt[256]; // Create an array of IDT entries; aligned for performance
 
@@ -61,8 +64,30 @@ static void log_registers(struct interrupt_frame* f) {
     error("  R13=0x%016lx  R14=0x%016lx  R15=0x%016lx", f->r13, f->r14, f->r15);
 }
 
+volatile uint64_t tick_counter = 0;
+
+static void irq_handler(struct interrupt_frame* frame) {
+    uint8_t irq = frame->vector - PIC1_OFFSET;
+
+    if (PIC_is_spurious(irq))
+        return;
+
+    // Handle PIT
+    if (irq == 0) {
+        tick_counter++;
+        push_event((struct event){ .type = EVENT_TIMER });
+    }
+
+    PIC_sendEOI(irq);
+}
+
 void exception_handler(struct interrupt_frame* frame) {
-    const char* name = frame->vector < N_EXCEPTIONS ? exception_names[frame->vector] : "Unknown";
+    if (frame->vector >= N_EXCEPTIONS) {
+        irq_handler(frame);
+        return;
+    }
+
+    const char* name = exception_names[frame->vector];
 
     // Resume from a breakpoint
     if (frame->vector == VECTOR_BREAKPOINT) {
@@ -95,8 +120,6 @@ void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags, uint8_t ist) {
     descriptor->reserved   = 0;
 }
 
-#define IDT_MAX_DESCRIPTORS 32
-
 extern void* isr_stub_table[];
 
 void idt_init(void) {
@@ -106,6 +129,10 @@ void idt_init(void) {
     for (uint8_t vector = 0; vector < N_EXCEPTIONS; vector++) {
         uint8_t ist = vector == VECTOR_DOUBLE_FAULT ? DOUBLE_FAULT_IST : 0;
         idt_set_descriptor(vector, isr_stub_table[vector], 0x8E, ist);
+    }
+
+    for (uint8_t vector = N_EXCEPTIONS; vector < IDT_MAX_DESCRIPTORS; vector++) {
+        idt_set_descriptor(vector, isr_stub_table[vector], 0x8E, 0);
     }
 
     __asm__ volatile("lidt %0" : : "m"(idtr)); // load the new IDT

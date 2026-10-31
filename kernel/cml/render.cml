@@ -52,13 +52,22 @@ structure Render = struct
             advance_cursor (Font.width_of_font f) (Font.height_of_font f)
         )
 
-    fun erase_char (f : Font.font) =
+    fun erase_char (f : Font.font) (advance : bool) =
         let
             val w = Font.width_of_font f
             val h = Font.height_of_font f
         in
-        advance_cursor (~ w) (~ h);
+        (if advance then advance_cursor (~ w) (~ h) else ());
         Framebuffer.clear_area (cx (!fb_cursor)) (cy (!fb_cursor)) w h
+        end
+
+    fun fill_char (f : Font.font) (advance : bool) =
+        let
+            val w = Font.width_of_font f
+            val h = Font.height_of_font f
+        in
+        (if advance then advance_cursor w h else ());
+        Framebuffer.fill_area (cx (!fb_cursor)) (cy (!fb_cursor)) w h
         end
 
     fun draw_string (f : Font.font) (s : string) =
@@ -108,7 +117,7 @@ structure Render = struct
                        [] => loop acc len
                      | _ :: rest =>
                          (Serial.write "\b \b";
-                          erase_char default_font;
+                          erase_char default_font True;
                           loop rest (len - 1)))
                 else if code = 27 then
                     (skip_escape (); loop acc len)
@@ -120,4 +129,13 @@ structure Render = struct
         in
         loop [] 0
         end
+    
+    val cursor_is_toggled = Ref False
+
+    fun toggle_cursor () =
+        (cursor_is_toggled := not (!cursor_is_toggled);
+        if !cursor_is_toggled then
+            fill_char default_font False
+        else
+            erase_char default_font False)
 end

@@ -1,8 +1,10 @@
 #include <stdint.h>
 
+#include "events.h"
 #include "fonts.h"
 #include "framebuffer.h"
 #include "hw.h"
+#include "interrupts.h"
 #include "logging.h"
 #include "serial.h"
 
@@ -328,7 +330,60 @@ FFI(clear_framebuffer_area) {
         return;
     }
 
-    fb_clear_area(
+    fb_fill_area(
         fb, (uint16_t)uint64_of_bytes(args + SIZE_OF_INT64), (uint16_t)uint64_of_bytes(args + 2 * SIZE_OF_INT64),
-        (uint16_t)uint64_of_bytes(args + 3 * SIZE_OF_INT64), (uint16_t)uint64_of_bytes(args + 4 * SIZE_OF_INT64));
+        (uint16_t)uint64_of_bytes(args + 3 * SIZE_OF_INT64), (uint16_t)uint64_of_bytes(args + 4 * SIZE_OF_INT64), 0);
+}
+
+FFI(fill_framebuffer_area) {
+    if (args_length != 5 * SIZE_OF_INT64) {
+        error("FFI fill_framebuffer_area: expected framebuffer address, x, y, w, h");
+        return;
+    }
+
+    struct limine_framebuffer* fb = framebuffer_at(uint64_of_bytes(args));
+    if (fb == NULL) {
+        error("FFI fill_framebuffer_area: no framebuffer at 0x%lx", uint64_of_bytes(args));
+        return;
+    }
+
+    fb_fill_area(fb, (uint16_t)uint64_of_bytes(args + SIZE_OF_INT64),
+                 (uint16_t)uint64_of_bytes(args + 2 * SIZE_OF_INT64),
+                 (uint16_t)uint64_of_bytes(args + 3 * SIZE_OF_INT64),
+                 (uint16_t)uint64_of_bytes(args + 4 * SIZE_OF_INT64), UINT32_MAX);
+}
+
+FFI(enable_interrupts) {
+    enable_interrupts();
+}
+
+FFI(disable_interrupts) {
+    disable_interrupts();
+}
+
+FFI(pop_event) {
+    if (args_length != 3 * SIZE_OF_INT64) {
+        error("FFI pop_event: expected success, type, data");
+        return;
+    }
+
+    struct event e = { 0 };
+    PollResult r   = pop_event(&e);
+
+    bytes_of_uint64(r, args);
+    bytes_of_uint64(e.type, args + SIZE_OF_INT64);
+    bytes_of_uint64(e.data, args + 2 * SIZE_OF_INT64);
+}
+
+FFI(wait_event) {
+    if (args_length != 2 * SIZE_OF_INT64) {
+        error("FFI wait_event: expected type, data");
+        return;
+    }
+
+    struct event e;
+    wait_event(&e);
+
+    bytes_of_uint64(e.type, args);
+    bytes_of_uint64(e.data, args + SIZE_OF_INT64);
 }

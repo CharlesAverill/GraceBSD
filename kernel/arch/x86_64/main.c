@@ -13,6 +13,7 @@
 #include "tables/gdt.h"
 #include "tables/idt.h"
 #include "tables/pic.h"
+#include "timers/pit.h"
 
 // TODO: Switch back to revision 6 eventually
 // Revision 5 masks the PIC so this will be revision 4 until I have enough infrastructure
@@ -49,12 +50,6 @@ __attribute__((used, section(".limine_requests"))) static volatile struct limine
 // To dereference a physical RAM address, you have to add the HHDM offset to the pointer
 __attribute__((used, section(".limine_requests"))) static volatile struct limine_hhdm_request hhdm_request = {
     .id = LIMINE_HHDM_REQUEST_ID, .revision = 0
-};
-
-// Request multiprocessor information, including the Multiple APIC Description Table (MADT) which is used
-// to set up the APIC chip for interrupts
-__attribute__((used, section(".limine_requests"))) static volatile struct limine_mp_request mp_request = {
-    .id = LIMINE_MP_REQUEST_ID, .revision = 0
 };
 
 void hcf(void) {
@@ -105,12 +100,15 @@ void kmain(void) {
     serial_init();
     info("Hello, World from GraceBSD!");
 
+    // Set up the PIT
+    set_pit_freq(DESIRED_PIT_FREQ);
+
     // Set up the Global Descriptor Table
     load_gdt();
     // Set up the Interrupt Descriptor Table
     idt_init();
     // Remap the PIC
-    PIC_remap(0x20, 0x28);
+    PIC_remap(PIC1_OFFSET, PIC2_OFFSET);
 
     // Ensure we got a framebuffer.
     if (framebuffer_request.response == NULL || framebuffer_request.response->framebuffer_count < 1) {

@@ -60,4 +60,12 @@ structure Framebuffer = struct
                 (Bytes.append_w8 (Bytes.buf_of_uint64 x)
                     (Bytes.append_w8 (Bytes.buf_of_uint64 y)
                         (Bytes.append_w8 (Bytes.buf_of_uint64 w) (Bytes.buf_of_uint64 h)))))
+
+    (* Fill the w x h area of the primary framebuffer at (x, y) *)
+    fun fill_area (x : int) (y : int) (w : int) (h : int) =
+        #(fill_framebuffer_area) ""
+            (Bytes.append_w8 (Bytes.buf_of_uint64 (address primary_fb))
+                (Bytes.append_w8 (Bytes.buf_of_uint64 x)
+                    (Bytes.append_w8 (Bytes.buf_of_uint64 y)
+                        (Bytes.append_w8 (Bytes.buf_of_uint64 w) (Bytes.buf_of_uint64 h)))))
 end
