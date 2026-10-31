@@ -1,5 +1,6 @@
 #include "gdt.h"
 #include "logging.h"
+#include "tss.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -73,16 +74,18 @@ void encode_large_gdt_entry(uint8_t* target, struct gdt_entry source) {
     target[15] = 0;
 }
 
+static struct tss tss;
+
 // https://wiki.osdev.org/GDT_Tutorial#Flat_/_Long_Mode_Setup
 #define N_STANDARD_GDT_ENTRIES 5
 #define N_LARGE_GDT_ENTRIES    1
 struct gdt_entry gdt_entries[N_STANDARD_GDT_ENTRIES + N_LARGE_GDT_ENTRIES] = {
-    {.base = 0,  .limit = 0,       .access_byte = 0,    .flags = 0  }, // Null descriptor
-    { .base = 0, .limit = 0xFFFFF, .access_byte = 0x9A, .flags = 0xA}, // Kernel code
-    { .base = 0, .limit = 0xFFFFF, .access_byte = 0x92, .flags = 0xC}, // Kernel data
-    { .base = 0, .limit = 0xFFFFF, .access_byte = 0xF2, .flags = 0xC}, // User data
-    { .base = 0, .limit = 0xFFFFF, .access_byte = 0xFA, .flags = 0xA}, // User code
-    { .base = 0, .limit = 0xFFFFF, .access_byte = 0x89, .flags = 0  }  // TSS
+    {.base = 0,               .limit = 0,               .access_byte = 0,    .flags = 0  }, // Null descriptor
+    { .base = 0,              .limit = 0xFFFFF,         .access_byte = 0x9A, .flags = 0xA}, // Kernel code
+    { .base = 0,              .limit = 0xFFFFF,         .access_byte = 0x92, .flags = 0xC}, // Kernel data
+    { .base = 0,              .limit = 0xFFFFF,         .access_byte = 0xF2, .flags = 0xC}, // User data
+    { .base = 0,              .limit = 0xFFFFF,         .access_byte = 0xFA, .flags = 0xA}, // User code
+    { .base = (uint8_t*)&tss, .limit = sizeof(tss) - 1, .access_byte = 0x89, .flags = 0  }  // TSS
 };
 
 void setup_gdt(uint8_t* gdt) {
@@ -126,6 +129,7 @@ static inline void reload_CS(uint16_t sel) {
 
 #define KERNEL_CODE_SELECTOR 0x08
 #define KERNEL_DATA_SELECTOR 0x10
+#define GDT_TSS_SELECTOR     0x28
 
 static uint8_t gdt[ENCODED_GDT_ENTRY_SIZE * N_STANDARD_GDT_ENTRIES + 2 * ENCODED_GDT_ENTRY_SIZE * N_LARGE_GDT_ENTRIES]
     __attribute__((aligned(8)));
@@ -145,4 +149,6 @@ void load_gdt(void) {
                      : "rax", "memory");
 
     reload_CS(KERNEL_DATA_SELECTOR);
+
+    __asm__ volatile("ltr %0" : : "r"((uint16_t)GDT_TSS_SELECTOR));
 }
