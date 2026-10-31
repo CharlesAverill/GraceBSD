@@ -1,8 +1,10 @@
 #include "gdt.h"
-#include "logging.h"
-#include "tss.h"
+
 #include <stddef.h>
 #include <stdint.h>
+
+#include "logging.h"
+#include "tss.h"
 
 struct gdt_entry {
     uint8_t* base;
@@ -126,10 +128,6 @@ static inline void reload_CS(uint16_t sel) {
     __asm__ volatile("mov %0, %%gs" : : "r"(sel));
     __asm__ volatile("mov %0, %%ss" : : "r"(sel));
 }
-
-#define KERNEL_CODE_SELECTOR 0x08
-#define KERNEL_DATA_SELECTOR 0x10
-#define GDT_TSS_SELECTOR     0x28
 
 static uint8_t gdt[ENCODED_GDT_ENTRY_SIZE * N_STANDARD_GDT_ENTRIES + 2 * ENCODED_GDT_ENTRY_SIZE * N_LARGE_GDT_ENTRIES]
     __attribute__((aligned(8)));

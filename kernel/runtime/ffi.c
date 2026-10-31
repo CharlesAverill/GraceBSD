@@ -1,9 +1,10 @@
+#include <stdint.h>
+
 #include "fonts.h"
 #include "framebuffer.h"
 #include "hw.h"
 #include "logging.h"
 #include "serial.h"
-#include <stdint.h>
 
 #define FFI(f) void ffi##f(unsigned char* command, long command_length, uint8_t* args, long args_length)
 

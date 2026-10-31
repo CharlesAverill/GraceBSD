@@ -6,11 +6,12 @@
 
 #include "cakeml.h"
 #include "framebuffer.h"
-#include "gdt.h"
 #include "generated/splash_data.h"
 #include "hw.h"
 #include "logging.h"
 #include "serial.h"
+#include "tables/gdt.h"
+#include "tables/idt.h"
 
 // Set the base revision to 6, this is recommended as this is the latest
 // base revision described by the Limine boot protocol specification.
@@ -94,12 +95,14 @@ void kmain(void) {
         hcf();
     }
 
-    // Set up the Global Descriptor Table
-    load_gdt();
-
     // Set up the UART console
     serial_init();
     info("Hello, World from GraceBSD!");
+
+    // Set up the Global Descriptor Table
+    load_gdt();
+    // Set up the Interrupt Descriptor Table
+    idt_init();
 
     // Ensure we got a framebuffer.
     if (framebuffer_request.response == NULL || framebuffer_request.response->framebuffer_count < 1) {

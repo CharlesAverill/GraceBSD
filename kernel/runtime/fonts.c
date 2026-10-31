@@ -1,10 +1,10 @@
 #include "fonts.h"
-#include "framebuffer.h"
-#include "hw.h"
 
+#include "framebuffer.h"
 #include "generated/font_Bm437_ToshibaSat_8x14.h"
 #include "generated/font_Bm437_ToshibaSat_8x16.h"
 #include "generated/font_Bm437_ToshibaSat_8x8.h"
+#include "hw.h"
 
 const uint32_t* arr_of_Font(Font f) {
     switch (f) {

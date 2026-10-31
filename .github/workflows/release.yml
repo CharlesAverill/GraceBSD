@@ -29,7 +29,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential git curl wget python3 xorriso
+          sudo apt-get install -y build-essential git curl wget python3 xorriso nasm
 
       - name: Build
         run: make GraceBSD.iso

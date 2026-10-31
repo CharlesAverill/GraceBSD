@@ -1,7 +1,9 @@
 #include "cakeml.h"
+
+#include <stdint.h>
+
 #include "hw.h"
 #include "logging.h"
-#include <stdint.h>
 
 extern int cml_main(void);
 

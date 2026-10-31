@@ -32,4 +32,10 @@ AlignConsecutiveAssignments:
   AlignCompound: false
   PadOperators: true
 AlignArrayOfStructures: Left
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex:    '^<.*>'
+    Priority: 1
+  - Regex:    '^".*"'
+    Priority: 2
 ---
