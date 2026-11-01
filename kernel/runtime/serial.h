@@ -8,8 +8,6 @@
 
 int serial_init(void);
 void serial_putc(char c);
-char serial_getc(void);
-char serial_getc_raw(void);
 void serial_write(char* s);
 void serial_writen(char* s, size_t len);
 bool serial_received(void);

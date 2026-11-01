@@ -98,6 +98,7 @@ structure Console = struct
         | ["factorial", arg] => print_factorial arg
         | ["greet", arg] => greet arg
         | ["hcf"] => Hw.hcf ()
+        | [] => ()
         | _ => print_help ();
         Render.print "> ")
 

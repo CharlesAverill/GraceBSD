@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "cakeml.h"
+#include "devices/ps2.h"
 #include "framebuffer.h"
 #include "generated/splash_data.h"
 #include "hw.h"
@@ -107,8 +108,13 @@ void kmain(void) {
     load_gdt();
     // Set up the Interrupt Descriptor Table
     idt_init();
+    // Set up the keyboard and mask its IRQ if it doesn't exist
+    uint16_t irqs = MASK_PIT | MASK_COM1;
+    if (ps2_init()) {
+        irqs |= MASK_KEYBOARD;
+    }
     // Remap the PIC
-    PIC_remap(PIC1_OFFSET, PIC2_OFFSET, MASK_PIT | MASK_KEYBOARD | MASK_COM1);
+    PIC_remap(PIC1_OFFSET, PIC2_OFFSET, irqs);
 
     // Ensure we got a framebuffer.
     if (framebuffer_request.response == NULL || framebuffer_request.response->framebuffer_count < 1) {

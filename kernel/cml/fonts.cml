@@ -13,12 +13,5 @@ structure Font = struct
     fun height_of_font (f : font) = Bytes.call_field (fn b => #(height_of_font) "" b) (int_of_font f)
 
     fun render_glyph (f : font) (c : char) (x : int) (y : int) =
-        let
-            val f_buf = Bytes.buf_of_uint64 (int_of_font f)
-            val c_buf = Bytes.buf_of_uint64 (Char.ord c)
-            val x_buf = Bytes.buf_of_uint64 x
-            val y_buf = Bytes.buf_of_uint64 y
-        in
-        #(render_glyph) "" (Bytes.append_w8 f_buf (Bytes.append_w8 c_buf (Bytes.append_w8 x_buf y_buf)))
-        end
+        #(render_glyph) "" (Bytes.buf_of_fields [int_of_font f, Char.ord c, x, y] 4)
 end

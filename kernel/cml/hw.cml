@@ -117,11 +117,11 @@ structure Hw = struct
 
     (* Write the low 32 bits of [value] to memory address [addr] *)
     fun mem_write32 (addr : int) (value : int) =
-        #(mem_write32) "" (Bytes.append_w8 (Bytes.buf_of_uint64 addr) (Bytes.buf_of_uint64 value))
+        #(mem_write32) "" (Bytes.buf_of_fields [addr, value] 2)
 
     (* Write [value], modulo 2^64, to memory address [addr] *)
     fun mem_write64 (addr : int) (value : int) =
-        #(mem_write64) "" (Bytes.append_w8 (Bytes.buf_of_uint64 addr) (Bytes.buf_of_uint64 value))
+        #(mem_write64) "" (Bytes.buf_of_fields [addr, value] 2)
 
     (* Read [len] bytes from physical memory address [addr] *)
     fun pmem_read (addr : int) = mem_read (hhdm_off + addr)
