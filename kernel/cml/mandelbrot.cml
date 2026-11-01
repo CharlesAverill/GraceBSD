@@ -1,15 +1,16 @@
 (* Print the mandelbrot set *)
 structure Mandelbrot = struct
-  val width  = 90
-  val height = 49
+  val width  = 91
+  val height = 52
   val maxIter = 100
   val scale = 4096
 
   val xMin = ~2 * scale           (* -2.0 *)
   val xMax = scale div 2          (*  0.5 *)
-  val yMin = ~(12 * scale) div 10 (* -1.2 *)
-  val yMax = (12 * scale) div 10  (*  1.2 *)
+  val yMin = ~(112 * scale) div 100 (* -1.12 *)
+  val yMax = (112 * scale) div 100  (*  1.12 *)
 
+  (* val charset = " .,-':_`;~^+=\"<>|i()/\r*l{}![]cv?LzTs17fx%IJtFaju2CSZeno43Y5EkpqwmPVh$69yXbdgKGUADO8H&R@0BQWMN#" *)
   val charset = " .:-=+*#%@"
   val numChars = String.size charset
 

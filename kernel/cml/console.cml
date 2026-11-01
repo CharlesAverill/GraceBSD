@@ -1,0 +1,79 @@
+structure Console = struct
+    fun factorial n =
+        if n = 0 then 1 else n * factorial (n - 1)
+
+    fun print_factorial (arg : string) =
+        case Int.fromString arg of
+          Some n =>
+            if n < 0 then
+                Render.println "factorial: n must be non-negative"
+            else
+                Render.println (Int.toString n ^ "! = " ^ Int.toString (factorial n))
+        | None => Render.println ("factorial: not a number: " ^ arg)
+
+    fun greet (name : string) = Render.println ("Hello, " ^ name ^ "!")
+
+    val commands = [
+        ("memmap", "print out the memory map"),
+        ("mandelbrot", "render the mandelbrot fractal"),
+        ("factorial <n>", "compute n!"),
+        ("greet <name>", "get greeted"),
+        ("help", "show this message")
+    ]
+
+    val max_cmd_len = List.foldl
+        (fn (str, _) => fn maxlen => if String.size str > maxlen then String.size str else maxlen)
+        0 commands
+
+    fun pad_right pad_char target_len str =
+        let
+            val current_len = String.size str
+        in
+            if current_len >= target_len then
+            str
+            else
+            str ^ String.implode (List.tabulate (target_len - current_len) (fn _ => pad_char))
+        end
+
+    fun print_help () =
+        List.app (fn (cmd, msg) =>
+            Render.println (pad_right #" " max_cmd_len cmd ^ "  " ^ msg)
+        ) commands
+
+    fun prompt (s : string) =
+        (case String.tokens (fn c => c = #" ") s of
+          ["memmap"] => Hw.print_memmap ()
+        | ["mandelbrot"] => Mandelbrot.render ()
+        | ["factorial", arg] => print_factorial arg
+        | ["greet", arg] => greet arg
+        | _ => print_help ();
+        Render.print "> ")
+
+    fun feed (k : Kbd.key option) =
+        case k of
+          Some key => Tty.input key
+        | None => ()
+
+    fun run () =
+        let
+            fun handle_events (counter : int) =
+                case Events.wait_event () of
+                  (Events.Timer, data) =>
+                    if counter + 1 >= 100 then (
+                        Render.toggle_cursor ();
+                        handle_events 0
+                    ) else
+                        handle_events (counter + 1)
+                | (Events.Keyboard, scancode) =>
+                    (feed (Kbd.get_key scancode);
+                     handle_events counter)
+                | (Events.Serial, byte) =>
+                    (feed (Kbd.decode_serial byte);
+                     handle_events counter)
+        in
+            print_help ();
+            Render.print "> ";
+            Tty.on_line := prompt;
+            handle_events 0
+        end
+end

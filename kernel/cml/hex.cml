@@ -1,0 +1,24 @@
+(* Printing integers as hex numbers *)
+structure Hex = struct
+    val digits = "0123456789abcdef"
+
+    fun digits_of (x : int) (w : int) =
+        let
+            (* acc holds the digits found so far, most significant first *)
+            fun go (n : int) (acc : char list) =
+                if n = 0 then acc
+                else go (n div 16) (String.sub digits (n mod 16) :: acc)
+
+            val ds = if x = 0 then [#"0"] else go x []
+            val pad = w - List.length ds
+        in
+            if pad <= 0 then String.implode ds
+            else String.implode (List.tabulate pad (fn _ => #"0") @ ds)
+        end
+
+    fun padded_hex_str_of_int (x : int) (w : int) =
+        if x < 0 then "-0x" ^ digits_of (~ x) w
+        else "0x" ^ digits_of x w
+
+    fun hex_str_of_int (x : int) = padded_hex_str_of_int x 0
+end

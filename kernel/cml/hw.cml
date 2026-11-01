@@ -72,6 +72,11 @@ structure Hw = struct
         load_entries 0
         end
 
+    fun print_memmap () =
+        List.app (fn (base, length, typ) =>
+            Render.println (Hex.padded_hex_str_of_int base 16 ^ " | " ^ Hex.padded_hex_str_of_int length 16 ^ " | " ^ string_of_mmap_entry_type typ)
+        ) mmap_entries
+
     (* Heap address *)
     val addr_heap : int =
         let

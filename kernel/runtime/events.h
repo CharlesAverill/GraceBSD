@@ -6,6 +6,8 @@
 
 typedef enum EventType {
     EVENT_TIMER,
+    EVENT_KEYBOARD, // Stores scancode
+    EVENT_SERIAL,   // Stores byte
     EVENT_END
 } EventType;
 

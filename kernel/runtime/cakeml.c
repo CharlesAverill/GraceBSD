@@ -17,6 +17,8 @@ void cml_err(int arg) {
     fatal(RC_ERROR, "CakeML runtime error %d", arg);
 }
 
+uint8_t job_id = 0;
+
 void cakeml_run(uint8_t* mem_base, uint64_t mem_size) {
     debug("CakeML: setting up memory");
 

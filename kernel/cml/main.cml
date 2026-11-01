@@ -1,30 +1,9 @@
-fun main () =
-    let
-        fun factorial n =
-            if n = 0 then 1 else n * factorial (n - 1)
+fun dispatch (job_id : int) =
+    case job_id of
+      0 => Console.run ()
+    | _ => Log.fatal Log.Rc_Error ("job_id out of range: " ^ Int.toString job_id)
 
-        fun print_every_second (counter : int) =
-            case Events.wait_event () of
-              (Events.Timer, data) =>
-              if counter + 1 >= 100 then (
-                (* Render.println "Tick"; *)
-                Render.toggle_cursor ();
-                print_every_second 0
-              ) else
-                print_every_second (counter + 1)
-            | _ => print_every_second counter
-
-        val _ = Mandelbrot.render ()
-        val _ = Render.print "What's your name? "
-        val name = Render.readln 10
-    in
-        Render.println ("Hello, " ^ name);
-        Render.print_int 15;
-        Render.print "! = ";
-        Render.print_int (factorial 15);
-        Render.println "";
-        print_every_second 0
-    end;
-
-val _ = main ()
+val job_id_buf = Bytes.buf_of_uint64 0
+val _ = #(job_id) "" job_id_buf
+val _ = dispatch (Bytes.uint64_of_buf job_id_buf)
     handle _ => Log.fatal Log.Rc_Error "uncaught exception";

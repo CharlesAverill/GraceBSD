@@ -44,30 +44,43 @@ structure Render = struct
             fb_cursor := Cursor x y
         end
 
-    fun draw_char (f : Font.font) (c : char) =
-        if c = #"\n" then
-            newline (Font.height_of_font f)
-        else (
-            Font.render_glyph f c (cx (!fb_cursor)) (cy (!fb_cursor));
-            advance_cursor (Font.width_of_font f) (Font.height_of_font f)
-        )
+    (* Whether the blinking cursor block is currently drawn in the cursor's slot *)
+    val cursor_is_toggled = Ref False
 
+    (* Clear or fill the glyph-sized slot at the cursor *)
+    fun clear_slot (f : Font.font) =
+        Framebuffer.clear_area (cx (!fb_cursor)) (cy (!fb_cursor)) (Font.width_of_font f) (Font.height_of_font f)
+
+    fun fill_slot (f : Font.font) =
+        Framebuffer.fill_area (cx (!fb_cursor)) (cy (!fb_cursor)) (Font.width_of_font f) (Font.height_of_font f)
+
+    (* Redraw the cursor block in its new slot if it's showing *)
+    fun show_cursor (f : Font.font) =
+        if !cursor_is_toggled then fill_slot f else ()
+
+    (* Draw a glyph into the cursor's slot and advance. The slot is cleared first,
+       so the cursor block never stays under a glyph, and the block moves along with
+       the cursor *)
+    fun draw_char (f : Font.font) (c : char) =
+        (clear_slot f;
+         (if c = #"\n" then
+              newline (Font.height_of_font f)
+          else (
+              Font.render_glyph f c (cx (!fb_cursor)) (cy (!fb_cursor));
+              advance_cursor (Font.width_of_font f) (Font.height_of_font f)
+          ));
+         show_cursor f)
+
+    (* Clear the cursor's slot, first moving back one glyph if advance is set *)
     fun erase_char (f : Font.font) (advance : bool) =
         let
             val w = Font.width_of_font f
             val h = Font.height_of_font f
         in
+        clear_slot f;
         (if advance then advance_cursor (~ w) (~ h) else ());
-        Framebuffer.clear_area (cx (!fb_cursor)) (cy (!fb_cursor)) w h
-        end
-
-    fun fill_char (f : Font.font) (advance : bool) =
-        let
-            val w = Font.width_of_font f
-            val h = Font.height_of_font f
-        in
-        (if advance then advance_cursor w h else ());
-        Framebuffer.fill_area (cx (!fb_cursor)) (cy (!fb_cursor)) w h
+        clear_slot f;
+        show_cursor f
         end
 
     fun draw_string (f : Font.font) (s : string) =
@@ -88,54 +101,10 @@ structure Render = struct
     fun print_int (x : int) =
         print (Int.toString x)
 
-    (* Read a line of up to max_len characters from COM1, echoing it to serial
-       and the screen. Backspace (BS or DEL) erases the last character, Enter
-       (CR or LF) ends the line, and escape sequences such as arrow keys are
-       ignored. Returns the line without the Enter. *)
-    fun readln (max_len : int) =
-        let
-            fun echo (c : char) =
-                (Serial.write (String.str c);
-                 draw_char default_font c)
-
-            (* Drop an escape sequence's ESC [ and final character *)
-            fun skip_escape () =
-                if Serial.read_char () = #"[" then (Serial.read_char (); ()) else ()
-
-            (* acc holds the characters read so far, most recent first *)
-            fun loop (acc : char list) (len : int) =
-                let
-                    val c = Serial.read_char ()
-                    val code = Char.ord c
-                in
-                if c = #"\r" orelse c = #"\n" then
-                    (Serial.write "\n";
-                     draw_char default_font #"\n";
-                     String.implode (List.rev acc))
-                else if code = 8 orelse code = 127 then
-                    (case acc of
-                       [] => loop acc len
-                     | _ :: rest =>
-                         (Serial.write "\b \b";
-                          erase_char default_font True;
-                          loop rest (len - 1)))
-                else if code = 27 then
-                    (skip_escape (); loop acc len)
-                else if code < 32 orelse code > 126 orelse len >= max_len then
-                    loop acc len
-                else
-                    (echo c; loop (c :: acc) (len + 1))
-                end
-        in
-        loop [] 0
-        end
-    
-    val cursor_is_toggled = Ref False
-
     fun toggle_cursor () =
         (cursor_is_toggled := not (!cursor_is_toggled);
         if !cursor_is_toggled then
-            fill_char default_font False
+            fill_slot default_font
         else
-            erase_char default_font False)
+            clear_slot default_font)
 end

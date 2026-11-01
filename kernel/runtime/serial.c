@@ -1,8 +1,5 @@
 #include "serial.h"
 
-#include <stdbool.h>
-#include <stdint.h>
-
 #include "io.h"
 #include "nanoprintf.h"
 
@@ -25,10 +22,11 @@ int serial_init() {
     // If serial is not faulty set it in normal operation mode
     // (not-loopback with IRQs enabled and OUT#1 and OUT#2 bits enabled)
     outb(COM1 + 4, 0x0F);
+    outb(COM1 + 1, 0x01); // Interrupt when a byte is received
     return 0;
 }
 
-static bool serial_received(void) {
+bool serial_received(void) {
     return inb(COM1 + 5) & 1;
 }
 
@@ -77,16 +75,6 @@ void serial_writen(char* s, size_t len) {
     }
 }
 
-size_t serial_readn(char* s, size_t len) {
-    size_t i;
-    for (i = 0; i < len; i++) {
-        s[i] = serial_getc();
-        if (s[i] == '\n' || s[i] == '\r')
-            break;
-    }
-    return i;
-}
-
 // Sign, 19 digits for INT64_MIN, and the terminator.
 #define MAX_INT_STR_LEN 21
 
@@ -119,12 +107,6 @@ int64_t atol(char* s) {
     }
 
     return neg ? -n : n;
-}
-
-int64_t serial_read_int(void) {
-    char buf[MAX_INT_STR_LEN];
-    serial_readn(buf, MAX_INT_STR_LEN);
-    return atol(buf);
 }
 
 static void serial_npf_putc(int c, void* ctx) {

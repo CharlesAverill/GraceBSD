@@ -5,6 +5,7 @@
 #include "io.h"
 #include "logging.h"
 #include "pic.h"
+#include "serial.h"
 
 __attribute__((aligned(0x10))) static idt_entry_t idt[256]; // Create an array of IDT entries; aligned for performance
 
@@ -74,10 +75,23 @@ static void irq_handler(struct interrupt_frame* frame) {
     if (PIC_is_spurious(irq))
         return;
 
-    // Handle PIT
-    if (irq == 0) {
+    switch (irq) {
+    case IRQ(PIT):
         tick_counter++;
         push_event((struct event){ .type = EVENT_TIMER });
+        break;
+    case IRQ(KEYBOARD):
+        // https://wiki.osdev.org/X86_Interrupts#Ports
+        push_event((struct event){ .type = EVENT_KEYBOARD, .data = inb(0x60) });
+        break;
+    case IRQ(COM1):
+        while (serial_received()) {
+            push_event((struct event){ .type = EVENT_SERIAL, .data = inb(COM1) });
+        }
+        break;
+    default:
+        debug("Unhandled IRQ %d\n", irq);
+        break;
     }
 
     PIC_sendEOI(irq);

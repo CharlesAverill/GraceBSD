@@ -2,6 +2,7 @@
 
 #include "pic.h"
 
+#include "idt.h"
 #include "io.h"
 
 #define PIC1         0x20 /* IO base address for master PIC */
@@ -37,8 +38,9 @@ arguments:
 	offset1 - vector offset for master PIC
 		vectors on the master become offset1..offset1+7
 	offset2 - same for slave PIC: offset2..offset2+7
+	mask - the IRQs to enable, as MASK_* bits from pic.h (master in the low byte, slave in the high byte)
 */
-void PIC_remap(int offset1, int offset2) {
+void PIC_remap(int offset1, int offset2, uint16_t mask) {
     outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4); // starts the initialization sequence (in cascade mode)
     io_wait();
     outb(PIC2_COMMAND, ICW1_INIT | ICW1_ICW4);
@@ -57,9 +59,16 @@ void PIC_remap(int offset1, int offset2) {
     outb(PIC2_DATA, ICW4_8086);
     io_wait();
 
-    // Keep all IRQs masked except for IRQ 0 for the PIT (for now)
-    outb(PIC1_DATA, 0xFE);
-    outb(PIC2_DATA, 0xFF);
+    // Slave IRQs only reach the CPU through the master's cascade line
+    if (mask & 0xFF00) {
+        mask |= MASK_CASCADE;
+    }
+
+    // A set bit in the PIC's mask register disables that IRQ, so invert the enable mask
+    outb(PIC1_DATA, ~mask & 0xFF);
+    io_wait();
+    outb(PIC2_DATA, (~mask >> 8) & 0xFF);
+    io_wait();
 }
 
 #define PIC_EOI 0x20 /* End-of-interrupt command code */

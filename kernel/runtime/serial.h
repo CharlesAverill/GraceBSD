@@ -2,6 +2,7 @@
 #define GRACE_SERIAL_H
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -11,10 +12,9 @@ char serial_getc(void);
 char serial_getc_raw(void);
 void serial_write(char* s);
 void serial_writen(char* s, size_t len);
-size_t serial_readn(char* s, size_t len);
+bool serial_received(void);
 void serial_write_int(int64_t x);
 void serial_write_hex(uint64_t x);
-int64_t serial_read_int(void);
 
 // printf to COM1 using nanoprintf
 __attribute__((format(printf, 1, 0))) void serial_vprintf(const char* fmt, va_list args);

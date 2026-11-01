@@ -108,7 +108,7 @@ void kmain(void) {
     // Set up the Interrupt Descriptor Table
     idt_init();
     // Remap the PIC
-    PIC_remap(PIC1_OFFSET, PIC2_OFFSET);
+    PIC_remap(PIC1_OFFSET, PIC2_OFFSET, MASK_PIT | MASK_KEYBOARD | MASK_COM1);
 
     // Ensure we got a framebuffer.
     if (framebuffer_request.response == NULL || framebuffer_request.response->framebuffer_count < 1) {

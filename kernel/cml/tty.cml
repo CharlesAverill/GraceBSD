@@ -1,0 +1,39 @@
+(* Console line editor handling input from both PS2 and serial *)
+structure Tty = struct
+    (* Characters typed so far *)
+    val line = Ref ([] : char list)
+    val len = Ref 0
+
+    (* Dereferenced and called upon entering a line *)
+    val on_line = Ref (fn (s : string) => ())
+
+    fun input (k : Kbd.key) =
+        case k of
+          Kbd.Key c =>
+            (* Only accept printable characters *)
+            if Char.ord c < 32 orelse Char.ord c > 126 then ()
+            else (
+                line := c :: !line;
+                len := !len + 1;
+                Render.print (String.str c)
+            )
+        | Kbd.Backspace =>
+            (case !line of
+               [] => ()
+             | _ :: rest => (
+                 line := rest;
+                 len := !len - 1;
+                 Serial.write "\b \b";
+                 Render.erase_char Render.default_font True
+             ))
+        | Kbd.Enter =>
+            let
+                val s = String.implode (List.rev (!line))
+            in
+                line := [];
+                len := 0;
+                Render.println "";
+                (!on_line) s
+            end
+        | _ => ()
+end

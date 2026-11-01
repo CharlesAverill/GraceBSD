@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#include "cakeml.h"
 #include "events.h"
 #include "fonts.h"
 #include "framebuffer.h"
@@ -28,26 +29,6 @@ void bytes_of_uint64(uint64_t n, unsigned char bytes[]) {
         bytes[i] = n & 0xff;
         n >>= 8;
     }
-}
-
-// Read a fixed number of bytes from COM1, stop reading upon a newline or CRE
-FFI(serial_readn) {
-    if (args_length < SIZE_OF_INT64) {
-        error("FFI serial_readn: expected at least 8 bytes");
-        return;
-    }
-
-    uint64_t len = serial_readn((char*)(args + SIZE_OF_INT64), args_length - SIZE_OF_INT64);
-    bytes_of_uint64(len, args);
-}
-
-FFI(serial_read_char) {
-    if (args_length != 1) {
-        error("FFI serial_read_char: expected 1 byte");
-        return;
-    }
-
-    args[0] = (unsigned char)serial_getc_raw();
 }
 
 // args holds a signed 64-bit integer as 8 bytes of little-endian two's complement
@@ -386,4 +367,13 @@ FFI(wait_event) {
 
     bytes_of_uint64(e.type, args);
     bytes_of_uint64(e.data, args + SIZE_OF_INT64);
+}
+
+FFI(job_id) {
+    if (args_length != SIZE_OF_INT64) {
+        error("FFI job_id: expected id");
+        return;
+    }
+
+    bytes_of_uint64(job_id, args);
 }

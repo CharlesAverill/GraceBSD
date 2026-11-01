@@ -1,6 +1,6 @@
 (* Hardware interrupt events *)
 structure Events = struct
-    datatype event_type = Timer
+    datatype event_type = Timer | Keyboard | Serial
     type event_data = int
 
     type event = event_type * event_data
@@ -8,10 +8,14 @@ structure Events = struct
     fun int_of_event_type (e : event_type) =
         case e of
           Timer => 0
+        | Keyboard => 1
+        | Serial => 2
 
     fun event_type_of_int (x : int) =
         case x of
           0 => Timer
+        | 1 => Keyboard
+        | 2 => Serial
         | _ => Log.fatal Log.Rc_Error ("event_type_of_int out of range: " ^ Int.toString x)
 
     datatype poll_result = PollSuccess | PollFailure
