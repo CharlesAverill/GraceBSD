@@ -18,6 +18,7 @@ structure Console = struct
         ("mandelbrot", "render the mandelbrot fractal"),
         ("factorial <n>", "compute n!"),
         ("greet <name>", "get greeted"),
+        ("hcf", "halt and catch fire"),
         ("help", "show this message")
     ]
 
@@ -46,6 +47,7 @@ structure Console = struct
         | ["mandelbrot"] => Mandelbrot.render ()
         | ["factorial", arg] => print_factorial arg
         | ["greet", arg] => greet arg
+        | ["hcf"] => Hw.hcf ()
         | _ => print_help ();
         Render.print "> ")
 
