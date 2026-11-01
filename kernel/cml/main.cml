@@ -3,7 +3,5 @@ fun dispatch (job_id : int) =
       0 => Console.run ()
     | _ => Log.fatal Log.Rc_Error ("job_id out of range: " ^ Int.toString job_id)
 
-val job_id_buf = Bytes.buf_of_uint64 0
-val _ = #(job_id) "" job_id_buf
-val _ = dispatch (Bytes.uint64_of_buf job_id_buf)
+val _ = dispatch (Bytes.call_field (fn b => #(job_id) "" b) 0)
     handle _ => Log.fatal Log.Rc_Error "uncaught exception";

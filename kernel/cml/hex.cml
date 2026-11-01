@@ -21,4 +21,36 @@ structure Hex = struct
         else "0x" ^ digits_of x w
 
     fun hex_str_of_int (x : int) = padded_hex_str_of_int x 0
+
+    fun hex_string_of_w8_arr (arr : byte_array) =
+        String.concatWith " " (List.map (fn x => digits_of x 2) (Bytes.int_list_of_w8_array arr))
+
+    fun digit_value (c : char) =
+        let
+            val n = Char.ord c
+        in
+            if n >= Char.ord #"0" andalso n <= Char.ord #"9" then Some (n - Char.ord #"0")
+            else if n >= Char.ord #"a" andalso n <= Char.ord #"f" then Some (n - Char.ord #"a" + 10)
+            else if n >= Char.ord #"A" andalso n <= Char.ord #"F" then Some (n - Char.ord #"A" + 10)
+            else None
+        end
+
+    fun int_of_hex_digits (s : string) =
+        let
+            fun go (cs : char list) (acc : int) =
+                case cs of
+                  [] => Some acc
+                | c :: rest =>
+                    (case digit_value c of
+                       Some d => go rest (acc * 16 + d)
+                     | None => None)
+        in
+            if String.size s = 0 then None else go (String.explode s) 0
+        end
+
+    fun int_of_str (s : string) =
+        if String.isPrefix "0x" s orelse String.isPrefix "0X" s then
+            int_of_hex_digits (String.extract s 2 None)
+        else
+            Int.fromString s
 end

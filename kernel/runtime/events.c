@@ -14,6 +14,14 @@ bool event_queue_full(void) {
     return (eq.tail + 1) % EVENT_QUEUE_SIZE == eq.head;
 }
 
+uint64_t event_queue_length(void) {
+    return (eq.tail + EVENT_QUEUE_SIZE - eq.head) % EVENT_QUEUE_SIZE;
+}
+
+uint64_t event_queue_dropped(void) {
+    return eq.dropped;
+}
+
 void push_event(struct event e) {
     if (event_queue_full()) {
         eq.dropped++;

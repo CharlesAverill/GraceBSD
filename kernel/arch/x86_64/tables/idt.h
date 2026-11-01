@@ -4,6 +4,9 @@
 #include <stdint.h>
 typedef unsigned __int128 uint128_t;
 
+// Number of PIT interrupts since boot
+extern volatile uint64_t tick_counter;
+
 // https://wiki.osdev.org/Interrupts_Tutorial
 typedef struct {
     uint16_t isr_low;   // The lower 16 bits of the ISR's address

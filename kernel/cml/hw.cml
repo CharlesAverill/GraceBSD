@@ -4,13 +4,7 @@ structure Hw = struct
     fun hcf () = #(hcf) "" Bytes.empty_buf
 
     (* HHDM offset *)
-    val hhdm_off =
-        let
-            val buf = Word8Array.array 8 (Word8.fromInt 0)
-        in
-        #(get_hhdm) "" buf;
-        Bytes.uint64_of_buf buf
-        end
+    val hhdm_off = Bytes.call_field (fn b => #(get_hhdm) "" b) 0
 
     (* Limine memory map types *)
     datatype mmap_entry_type =
@@ -48,18 +42,11 @@ structure Hw = struct
     (* List of all memory map entries *)
     val mmap_entries : mmap_entry list =
         let
-            val lenbuf = Bytes.buf_of_uint64 0
-            val _ = #(n_mmap_entries) "" lenbuf
-            val len = Bytes.uint64_of_buf lenbuf
-            val entrybuf = Word8Array.array (3 * Bytes.size_of_uint64_buf) (Word8.fromInt 0)
-            fun field (k : int) = Bytes.uint64_of_buf_at entrybuf (k * Bytes.size_of_uint64_buf)
+            val len = Bytes.call_field (fn b => #(n_mmap_entries) "" b) 0
             fun load_entry (i : int) =
-                let
-                    val _ = Word8Array.copy (Bytes.buf_of_uint64 i) 0 Bytes.size_of_uint64_buf entrybuf 0
-                    val _ = #(load_mmap_entry) "" entrybuf
-                in
-                (field 0, field 1, mmap_entry_type_of_int (field 2))
-                end
+                case Bytes.call_fields (fn b => #(load_mmap_entry) "" b) [i] 3 of
+                  [base, length, typ] => (base, length, mmap_entry_type_of_int typ)
+                | _ => Log.fatal Log.Rc_Init_Error "load_mmap_entry: wrong field count"
             fun load_entries (i : int) =
                 if i >= len then []
                 else
@@ -78,25 +65,13 @@ structure Hw = struct
         ) mmap_entries
 
     (* Heap address *)
-    val addr_heap : int =
-        let
-            val buf = Bytes.buf_of_uint64 0
-        in
-        #(cml_heap) "" buf;
-        Bytes.uint64_of_buf buf
-        end
+    val addr_heap : int = Bytes.call_field (fn b => #(cml_heap) "" b) 0
 
     (* Physical heap address *)
     val paddr_heap : int = addr_heap - hhdm_off
 
     (* Stack address *)
-    val addr_stack : int =
-        let
-            val buf = Bytes.buf_of_uint64 0
-        in
-        #(cml_stack) "" buf;
-        Bytes.uint64_of_buf buf
-        end
+    val addr_stack : int = Bytes.call_field (fn b => #(cml_stack) "" b) 0
 
     (* Physical stack address *)
     val paddr_stack : int = addr_stack - hhdm_off
@@ -105,13 +80,19 @@ structure Hw = struct
     val heap_size : int = addr_stack - addr_heap
 
     (* Stack size *)
-    val stack_size : int =
-        let
-            val buf = Bytes.buf_of_uint64 0
-        in
-        #(cml_stackend) "" buf;
-        Bytes.uint64_of_buf buf - addr_stack
-        end
+    val stack_size : int = Bytes.call_field (fn b => #(cml_stackend) "" b) 0 - addr_stack
+
+    (* Ticks since boot, the PIT reload, and the PIT's input clock in Hz *)
+    fun uptime () =
+        case Bytes.call_fields (fn b => #(uptime) "" b) [] 3 of
+          [ticks, reload, raw_hz] => (ticks, reload, raw_hz)
+        | _ => Log.fatal Log.Rc_Error "uptime: wrong field count"
+
+    (* Ticks since boot, events waiting in the queue, and events dropped *)
+    fun stats () =
+        case Bytes.call_fields (fn b => #(stats) "" b) [] 3 of
+          [ticks, queued, dropped] => (ticks, queued, dropped)
+        | _ => Log.fatal Log.Rc_Error "stats: wrong field count"
 
     (* Read [len] bytes from memory address [addr] *)
     fun mem_read (addr : int) (len : int) =
@@ -125,22 +106,10 @@ structure Hw = struct
         end
 
     (* Read 32 bits from memory *)
-    fun mem_read32 (addr : int) =
-        let
-            val buf = Bytes.buf_of_uint64 addr
-        in
-        #(mem_read32) "" buf;
-        Bytes.uint64_of_buf buf
-        end
+    fun mem_read32 (addr : int) = Bytes.call_field (fn b => #(mem_read32) "" b) addr
 
     (* Read 64 bits from memory *)
-    fun mem_read64 (addr : int) =
-        let
-            val buf = Bytes.buf_of_uint64 addr
-        in
-        #(mem_read64) "" buf;
-        Bytes.uint64_of_buf buf
-        end
+    fun mem_read64 (addr : int) = Bytes.call_field (fn b => #(mem_read64) "" b) addr
 
     (* Write the bytes of [data] to memory address [addr] *)
     fun mem_write (addr : int) (data : byte_array) =

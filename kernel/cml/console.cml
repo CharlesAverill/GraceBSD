@@ -11,20 +11,15 @@ structure Console = struct
                 Render.println (Int.toString n ^ "! = " ^ Int.toString (factorial n))
         | None => Render.println ("factorial: not a number: " ^ arg)
 
-    fun greet (name : string) = Render.println ("Hello, " ^ name ^ "!")
-
-    val commands = [
-        ("memmap", "print out the memory map"),
-        ("mandelbrot", "render the mandelbrot fractal"),
-        ("factorial <n>", "compute n!"),
-        ("greet <name>", "get greeted"),
-        ("hcf", "halt and catch fire"),
-        ("help", "show this message")
-    ]
-
-    val max_cmd_len = List.foldl
-        (fn (str, _) => fn maxlen => if String.size str > maxlen then String.size str else maxlen)
-        0 commands
+    fun print_mem_read (addr : string) (len : string) =
+        case (Hex.int_of_str addr, Hex.int_of_str len) of
+          (Some a, Some n) =>
+            if a < 0 orelse n < 0 then
+                Render.println "read: addr and len must be non-negative"
+            else
+                Render.println (Hex.hex_string_of_w8_arr (Hw.mem_read a n))
+        | (None, _) => Render.println ("read: not a number: " ^ addr)
+        | (_, None) => Render.println ("read: not a number: " ^ len)
 
     fun pad_right pad_char target_len str =
         let
@@ -36,6 +31,58 @@ structure Console = struct
             str ^ String.implode (List.tabulate (target_len - current_len) (fn _ => pad_char))
         end
 
+    (* zero-pad n in decimal *)
+    fun pad_int (n : int) (w : int) =
+        let
+            val s = Int.toString n
+        in
+            if String.size s >= w then s
+            else String.implode (List.tabulate (w - String.size s) (fn _ => #"0")) ^ s
+        end
+
+    fun print_uptime () =
+        let
+            val (ticks, reload, raw_hz) = Hw.uptime ()
+            val cs = ticks * reload * 100 div raw_hz
+            val secs = cs div 100
+        in
+            Render.println ("up " ^ Int.toString (secs div 3600) ^ ":" ^
+                pad_int (secs div 60 mod 60) 2 ^ ":" ^ pad_int (secs mod 60) 2 ^ "." ^
+                pad_int (cs mod 100) 2 ^ " (" ^ Int.toString ticks ^ " ticks)")
+        end
+
+    fun print_stats () =
+        let
+            val (ticks, queued, dropped) = Hw.stats ()
+            val rows = [
+                ("ticks", ticks),
+                ("events queued", queued),
+                ("events dropped", dropped)
+            ]
+        in
+            List.app (fn (name, n) =>
+                Render.println (pad_right #" " 15 name ^ Int.toString n)
+            ) rows
+        end
+
+    fun greet (name : string) = Render.println ("Hello, " ^ name ^ "!")
+
+    val commands = [
+        ("memmap", "print out the memory map"),
+        ("read <addr> <len>", "read len bytes from *addr"),
+        ("uptime", "time since boot"),
+        ("stats", "event and interrupt counters"),
+        ("mandelbrot", "render the mandelbrot fractal"),
+        ("factorial <n>", "compute n!"),
+        ("greet <name>", "get greeted"),
+        ("hcf", "halt and catch fire"),
+        ("help", "show this message")
+    ]
+
+    val max_cmd_len = List.foldl
+        (fn (str, _) => fn maxlen => if String.size str > maxlen then String.size str else maxlen)
+        0 commands
+
     fun print_help () =
         List.app (fn (cmd, msg) =>
             Render.println (pad_right #" " max_cmd_len cmd ^ "  " ^ msg)
@@ -44,6 +91,9 @@ structure Console = struct
     fun prompt (s : string) =
         (case String.tokens (fn c => c = #" ") s of
           ["memmap"] => Hw.print_memmap ()
+        | ["read", addr, len] => print_mem_read addr len
+        | ["uptime"] => print_uptime ()
+        | ["stats"] => print_stats ()
         | ["mandelbrot"] => Mandelbrot.render ()
         | ["factorial", arg] => print_factorial arg
         | ["greet", arg] => greet arg

@@ -5,7 +5,12 @@
 
 #define DESIRED_PIT_FREQ 100
 
-extern uint16_t pit_freq;
+// PIT input clock speed
+#define PIT_RAW_HZ 1193182
+
+// The programmed divisor of PIT_RAW_HZ
+// 1 tick = pit_reload / PIT_RAW_HZ seconds
+extern uint32_t pit_reload;
 
 void set_pit_freq(uint16_t hz);
 

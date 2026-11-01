@@ -33,6 +33,8 @@ typedef enum PollResult {
 
 bool event_queue_empty(void);
 bool event_queue_full(void);
+uint64_t event_queue_length(void);
+uint64_t event_queue_dropped(void);
 void push_event(struct event e);
 PollResult pop_event(struct event*);
 void wait_event(struct event*);

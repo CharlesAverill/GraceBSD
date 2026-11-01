@@ -8,6 +8,8 @@
 #include "interrupts.h"
 #include "logging.h"
 #include "serial.h"
+#include "tables/idt.h"
+#include "timers/pit.h"
 
 #define FFI(f) void ffi##f(unsigned char* command, long command_length, uint8_t* args, long args_length)
 
@@ -376,4 +378,28 @@ FFI(job_id) {
     }
 
     bytes_of_uint64(job_id, args);
+}
+
+#define UPTIME_FIELDS 3
+FFI(uptime) {
+    if (args_length != UPTIME_FIELDS * SIZE_OF_INT64) {
+        error("FFI uptime: expected ticks, reload, raw_hz");
+        return;
+    }
+
+    bytes_of_uint64(tick_counter, args);
+    bytes_of_uint64(pit_reload, args + SIZE_OF_INT64);
+    bytes_of_uint64(PIT_RAW_HZ, args + 2 * SIZE_OF_INT64);
+}
+
+#define STATS_FIELDS 3
+FFI(stats) {
+    if (args_length != STATS_FIELDS * SIZE_OF_INT64) {
+        error("FFI stats: expected ticks, queued, dropped");
+        return;
+    }
+
+    bytes_of_uint64(tick_counter, args);
+    bytes_of_uint64(event_queue_length(), args + SIZE_OF_INT64);
+    bytes_of_uint64(event_queue_dropped(), args + 2 * SIZE_OF_INT64);
 }

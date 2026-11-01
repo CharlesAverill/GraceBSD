@@ -31,33 +31,18 @@ structure Events = struct
         | 1 => PollFailure
         | _ => Log.fatal Log.Rc_Error ("poll_result_of_int out of range: " ^ Int.toString x)
 
-    (* Expects 3 64-bit ints: success, type, data *)
-    fun event_of_bytes (arr : byte_array) =
-        let
-            val succ = poll_result_of_int (Bytes.uint64_of_buf_at arr 0)
-            val ty = event_type_of_int (Bytes.uint64_of_buf_at arr Bytes.size_of_uint64_buf)
-            val data = Bytes.uint64_of_buf_at arr (2 * Bytes.size_of_uint64_buf)
-        in
-        case succ of
-          PollSuccess => Some (ty, data)
-        | PollFailure => None
-        end
+    fun event_of_ints (ty : int) (data : int) = (event_type_of_int ty, data)
 
     fun pop_event () =
-        let
-            val buf = Word8Array.array (3 * Bytes.size_of_uint64_buf) (Word8.fromInt 0)
-        in
-        #(pop_event) "" buf;
-        event_of_bytes buf
-        end
+        case Bytes.call_fields (fn b => #(pop_event) "" b) [] 3 of
+          [succ, ty, data] =>
+            (case poll_result_of_int succ of
+               PollSuccess => Some (event_of_ints ty data)
+             | PollFailure => None)
+        | _ => Log.fatal Log.Rc_Error "pop_event: wrong field count"
 
     fun wait_event () =
-        let
-            val buf = Word8Array.array (2 * Bytes.size_of_uint64_buf) (Word8.fromInt 0)
-        in
-        #(wait_event) "" buf;
-        case event_of_bytes (Bytes.append_w8 (Bytes.buf_of_uint64 0) buf) of
-          Some x => x
-        | None => Log.fatal Log.Rc_Error "wait_event got PollFailure, should be impossible"
-        end
+        case Bytes.call_fields (fn b => #(wait_event) "" b) [] 2 of
+          [ty, data] => event_of_ints ty data
+        | _ => Log.fatal Log.Rc_Error "wait_event: wrong field count"
 end

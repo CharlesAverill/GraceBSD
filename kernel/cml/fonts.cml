@@ -8,21 +8,9 @@ structure Font = struct
         | TS_8x14 => 1
         | TS_8x16 => 2
 
-    fun width_of_font (f : font) =
-        let
-            val buf = Bytes.buf_of_uint64 (int_of_font f)
-        in
-        #(width_of_font) "" buf;
-        Bytes.uint64_of_buf buf
-        end
+    fun width_of_font (f : font) = Bytes.call_field (fn b => #(width_of_font) "" b) (int_of_font f)
 
-    fun height_of_font (f : font) =
-        let
-            val buf = Bytes.buf_of_uint64 (int_of_font f)
-        in
-        #(height_of_font) "" buf;
-        Bytes.uint64_of_buf buf
-        end
+    fun height_of_font (f : font) = Bytes.call_field (fn b => #(height_of_font) "" b) (int_of_font f)
 
     fun render_glyph (f : font) (c : char) (x : int) (y : int) =
         let

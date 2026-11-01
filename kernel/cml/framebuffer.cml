@@ -20,19 +20,12 @@ structure Framebuffer = struct
     (* List of all framebuffers *)
     val framebuffers : framebuffer list =
         let
-            val lenbuf = Bytes.buf_of_uint64 0
-            val _ = #(n_framebuffers) "" lenbuf
-            val len = Bytes.uint64_of_buf lenbuf
-            val fbbuf = Word8Array.array (12 * Bytes.size_of_uint64_buf) (Word8.fromInt 0)
-            fun field (k : int) = Bytes.uint64_of_buf_at fbbuf (k * Bytes.size_of_uint64_buf)
+            val len = Bytes.call_field (fn b => #(n_framebuffers) "" b) 0
             fun load_framebuffer (i : int) =
-                let
-                    val _ = Word8Array.copy (Bytes.buf_of_uint64 i) 0 Bytes.size_of_uint64_buf fbbuf 0
-                    val _ = #(load_framebuffer) "" fbbuf
-                in
-                Framebuffer (field 0) (field 1) (field 2) (field 3) (field 4) (field 5)
-                    (Mask (field 6) (field 7)) (Mask (field 8) (field 9)) (Mask (field 10) (field 11))
-                end
+                case Bytes.call_fields (fn b => #(load_framebuffer) "" b) [i] 12 of
+                  [addr, w, h, p, bpp, model, rs, rsh, gs, gsh, bs, bsh] =>
+                    Framebuffer addr w h p bpp model (Mask rs rsh) (Mask gs gsh) (Mask bs bsh)
+                | _ => Log.fatal Log.Rc_Init_Error "load_framebuffer: wrong field count"
             fun load_framebuffers (i : int) =
                 if i >= len then []
                 else
@@ -51,21 +44,15 @@ structure Framebuffer = struct
         | h :: _ => h
 
     fun scroll_fb (f : framebuffer) (h : int) =
-        #(scroll_framebuffer) "" (Bytes.append_w8 (Bytes.buf_of_uint64 (address f)) (Bytes.buf_of_uint64 h))
+        #(scroll_framebuffer) "" (Bytes.buf_of_fields [address f, h] 2)
 
     (* Clear the w x h area of the primary framebuffer at (x, y) *)
     fun clear_area (x : int) (y : int) (w : int) (h : int) =
         #(clear_framebuffer_area) ""
-            (Bytes.append_w8 (Bytes.buf_of_uint64 (address primary_fb))
-                (Bytes.append_w8 (Bytes.buf_of_uint64 x)
-                    (Bytes.append_w8 (Bytes.buf_of_uint64 y)
-                        (Bytes.append_w8 (Bytes.buf_of_uint64 w) (Bytes.buf_of_uint64 h)))))
+            (Bytes.buf_of_fields [address primary_fb, x, y, w, h] 5)
 
     (* Fill the w x h area of the primary framebuffer at (x, y) *)
     fun fill_area (x : int) (y : int) (w : int) (h : int) =
         #(fill_framebuffer_area) ""
-            (Bytes.append_w8 (Bytes.buf_of_uint64 (address primary_fb))
-                (Bytes.append_w8 (Bytes.buf_of_uint64 x)
-                    (Bytes.append_w8 (Bytes.buf_of_uint64 y)
-                        (Bytes.append_w8 (Bytes.buf_of_uint64 w) (Bytes.buf_of_uint64 h)))))
+            (Bytes.buf_of_fields [address primary_fb, x, y, w, h] 5)
 end

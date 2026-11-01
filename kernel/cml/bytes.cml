@@ -63,4 +63,47 @@ structure Bytes = struct
         Word8Array.copy a2 0 (Word8Array.length a2) arr (Word8Array.length a1);
         arr
         end
+
+    (* A buffer of [n] 8-byte fields whose first fields hold [inputs] and whose
+       remaining fields are zero *)
+    fun buf_of_fields (inputs : int list) (n : int) =
+        let
+            val arr = Word8Array.array (n * size_of_uint64_buf) (Word8.fromInt 0)
+            fun fill (xs : int list) (k : int) =
+                case xs of
+                  [] => arr
+                | x :: rest =>
+                    (Word8Array.copy (buf_of_uint64 x) 0 size_of_uint64_buf arr (k * size_of_uint64_buf);
+                     fill rest (k + 1))
+        in
+        fill inputs 0
+        end
+
+    (* Call FFI [f] on a buffer of [n] 8-byte fields whose first fields hold
+       [inputs], and return all n fields after the call *)
+    fun call_fields (f : byte_array -> unit) (inputs : int list) (n : int) =
+        let
+            val buf = buf_of_fields inputs n
+        in
+        f buf;
+        List.tabulate n (fn k => uint64_of_buf_at buf (k * size_of_uint64_buf))
+        end
+
+    (* Call FFI [f] on a single 8-byte field holding [input], and return that
+       field after the call *)
+    fun call_field (f : byte_array -> unit) (input : int) =
+        let
+            val buf = buf_of_uint64 input
+        in
+        f buf;
+        uint64_of_buf buf
+        end
+
+    fun int_list_of_w8_array_aux (arr : byte_array) (idx : int) =
+        if idx = Word8Array.length arr then
+            []
+        else
+            Word8.toInt (Word8Array.sub arr idx) :: int_list_of_w8_array_aux arr (idx + 1)
+
+    fun int_list_of_w8_array (arr : byte_array) = int_list_of_w8_array_aux arr 0
 end
