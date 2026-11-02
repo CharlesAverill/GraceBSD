@@ -22,6 +22,7 @@ SECTIONS
     /* Any address in this region will do, but often 0xffffffff80000000 is chosen as */
     /* that is the beginning of the region. */
     . = 0xffffffff80000000;
+    kernel_start = .;
 
     /* Define a section to contain the Limine requests and assign it to its own PHDR */
     .limine_requests : {
@@ -33,6 +34,7 @@ SECTIONS
     /* Move to the next memory page for .text */
     . = ALIGN(CONSTANT(MAXPAGESIZE));
 
+    kernel_text_start = .;
     .text : {
         *(.text .text.*)
     } :text
@@ -40,6 +42,7 @@ SECTIONS
     /* Move to the next memory page for .rodata */
     . = ALIGN(CONSTANT(MAXPAGESIZE));
 
+    kernel_rodata_start = .;
     .rodata : {
         *(.rodata .rodata.*)
     } :rodata
@@ -53,6 +56,7 @@ SECTIONS
     /* Move to the next memory page for .data */
     . = ALIGN(CONSTANT(MAXPAGESIZE));
 
+    kernel_data_start = .;
     .data : {
         *(.data .data.*)
     } :data
@@ -65,6 +69,7 @@ SECTIONS
         *(.bss .bss.*)
         *(COMMON)
     } :data
+    kernel_end = .;
 
     /* Discard .note.* and .eh_frame* since they may cause issues on some hosts, */
     /* and the GOT, which nothing in the kernel needs but some linkers create. */

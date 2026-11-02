@@ -1,0 +1,14 @@
+(* x86-64 primitives *)
+structure X64 = struct
+    fun read_cr3 () = Bytes.call_field (fn b => #(read_cr3) "" b) 0
+
+    (* Load [value] into CR3 to switch page tables *)
+    fun load_cr3 (value : int) = #(load_cr3) "" (Bytes.buf_of_uint64 value)
+
+    (* Drop the TLB entry for the page containing virtual address [addr] *)
+    fun invlpg (addr : int) = #(invlpg) "" (Bytes.buf_of_uint64 addr)
+
+    (* The physical address held in a CR3 value
+       https://wiki.osdev.org/CPU_Registers_x86#CR3 *)
+    fun cr3_root (cr3 : int) = (cr3 div 4096) mod 1099511627776 * 4096
+end

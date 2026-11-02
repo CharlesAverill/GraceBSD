@@ -1,6 +1,27 @@
+(* End of the highest region that could be handed out *)
+val memory_top =
+    List.foldl (fn (base, len, typ) => fn top =>
+        case typ of
+          Hw.Usable => if base + len > top then base + len else top
+        | Hw.BootloaderReclaimable => if base + len > top then base + len else top
+        | _ => top
+    ) 0 Hw.mmap_entries
+
+fun main () =
+    (* Build the page table allocator from the memory map *)
+    (FrameAllocator.init memory_top;
+     List.app (fn (base, len, typ) =>
+        case typ of
+          Hw.Usable => FrameAllocator.free_range base len
+        | _ => ()
+     ) Hw.mmap_entries;
+     (* Re-reserve the CakeML heap and stack *)
+     FrameAllocator.reserve_range Hw.paddr_heap (Hw.heap_size + Hw.stack_size);
+     Console.run ());
+
 fun dispatch (job_id : int) =
     case job_id of
-      0 => Console.run ()
+      0 => main ()
     | _ => Log.fatal Log.Rc_Error ("job_id out of range: " ^ Int.toString job_id)
 
 val _ = dispatch (Bytes.call_field (fn b => #(job_id) "" b) 0)

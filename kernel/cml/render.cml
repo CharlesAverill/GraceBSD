@@ -107,4 +107,7 @@ structure Render = struct
             fill_slot default_font
         else
             clear_slot default_font)
+
+    fun place_cursor (x : int) (y : int) =
+        fb_cursor := Cursor x y
 end

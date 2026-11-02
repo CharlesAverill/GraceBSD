@@ -97,6 +97,12 @@ static void irq_handler(struct interrupt_frame* frame) {
     PIC_sendEOI(irq);
 }
 
+#define PGFAULT_PROT     (1 << 0)
+#define PGFAULT_RWR      (1 << 1)
+#define PGFAULT_USER     (1 << 2)
+#define PGFAULT_RESERVED (1 << 3)
+#define PGFAULT_INST     (1 << 4)
+
 void exception_handler(struct interrupt_frame* frame) {
     if (frame->vector >= N_EXCEPTIONS) {
         irq_handler(frame);
@@ -118,6 +124,11 @@ void exception_handler(struct interrupt_frame* frame) {
         uint64_t cr2;
         __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
         error("  Faulting address (CR2) = 0x%016lx", cr2);
+        // https://wiki.osdev.org/Exceptions#Page_Fault
+        uint64_t e = frame->error_code;
+        error("  %s, %s, %s mode%s", e & PGFAULT_PROT ? "protection violation" : "page not present",
+              e & PGFAULT_INST ? "instruction fetch" : (e & PGFAULT_RWR ? "write" : "read"),
+              e & PGFAULT_USER ? "user" : "kernel", e & PGFAULT_RESERVED ? ", reserved bit set" : "");
     }
     log_registers(frame);
 

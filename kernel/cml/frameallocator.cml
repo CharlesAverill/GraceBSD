@@ -1,0 +1,129 @@
+(* Page Table frame allocation *)
+structure FrameAllocator = struct
+    (* Bitmap of allocated pages *)
+    val table = Ref (Word8Array.array 0 (Word8.fromInt 0))
+    val table_size = Ref 0
+
+    (* Number of free frames in the table *)
+    val free_count = Ref 0
+
+    (* Cursor for searching in the table *)
+    val cursor = Ref 0
+
+    (* Size of a page in bytes *)
+    val page_size = 4096
+
+    (* Initialize the table to refer to [n] bytes *)
+    fun init (n : int) =
+        let
+           val n_frames = n div page_size
+        in
+        table := Word8Array.array ((n_frames + 7) div 8) (Word8.fromInt 0xff);
+        table_size := n_frames;
+        free_count := 0;
+        cursor := 0
+        end
+
+    fun bit_mask (frame : int) = Word8.<< (Word8.fromInt 1) (frame mod 8)
+
+    (* Set or clear [frame]'s bit, keeping [free_count] in step *)
+    fun set_frame (used : bool) (frame : int) =
+        let
+            val bits = !table
+            val i = frame div 8
+            val byte = Word8Array.sub bits i
+            val was_used = Word8.toInt (Word8.andb byte (bit_mask frame)) <> 0
+        in
+            if used = was_used then ()
+            else (
+                Word8Array.update bits i
+                    (if used then Word8.orb byte (bit_mask frame)
+                     else Word8.andb byte (Word8.notb (bit_mask frame)));
+                free_count := (if used then !free_count - 1 else !free_count + 1)
+            )
+        end
+
+    (* Apply [g] to each frame in the range [first, last), clamped to the
+       frames in the table *)
+    fun each_frame (first : int) (last : int) (g : int -> unit) =
+        let
+            val hi = if last > !table_size then !table_size else last
+            fun aux (f : int) = if f >= hi then () else (g f; aux (f + 1))
+        in
+            aux (if first < 0 then 0 else first)
+        end
+
+    (* Mark frames lying inside a range of bytes as free *)
+    fun free_range (start : int) (len : int) =
+        if len <= 0 then ()
+        else
+            each_frame ((start + page_size - 1) div page_size) ((start + len) div page_size)
+                (set_frame False)
+
+    (* Mark a range of bytes as used *)
+    fun reserve_range (start : int) (len : int) =
+        if len <= 0 then ()
+        else
+            each_frame (start div page_size) ((start + len + page_size - 1) div page_size)
+                (set_frame True)
+
+    (* The byte of the table holding [frame]'s bit *)
+    fun byte_of_frame (frame : int) = Word8Array.sub (!table) (frame div 8)
+
+    fun is_free (frame : int) =
+        frame >= 0 andalso frame < !table_size andalso
+        Word8.toInt (Word8.andb (byte_of_frame frame) (bit_mask frame)) = 0
+
+    (* Find a free frame in the range [first, last) *)
+    fun find_free (first : int) (last : int) =
+        if first >= last then None
+        else if Word8.toInt (byte_of_frame first) = 255 then find_free ((first div 8 + 1) * 8) last
+        else if is_free first then Some first
+        else find_free (first + 1) last
+
+    (* Allocate a frame *)
+    fun alloc () =
+        let
+            val start = !cursor
+            val found =
+                case find_free start (!table_size) of
+                  None => find_free 0 start
+                | some => some
+        in
+            case found of
+              None => None
+            | Some frame => (set_frame True frame; cursor := frame + 1; Some frame)
+        end
+
+    (* Free [frame]. Returns False if it was already free or out of range *)
+    fun free (frame : int) =
+        if frame < 0 orelse frame >= !table_size orelse is_free frame then False
+        else (set_frame False frame; True)
+
+    (* Index of the first used frame in the range [first, last) *)
+    fun find_used (first : int) (last : int) =
+        if first >= last then None
+        else if is_free first then find_used (first + 1) last
+        else Some first
+
+    (* Allocate [count] consecutive frames aligned to [align] *)
+    fun alloc_contig (count : int) (align : int) =
+        let
+            val align = if align < 1 then 1 else align
+            fun round_up (f : int) = (f + align - 1) div align * align
+            fun try (f : int) =
+                if f + count > !table_size then None
+                else
+                    case find_used f (f + count) of
+                      Some used => try (round_up (used + 1))
+                    | None => (each_frame f (f + count) (set_frame True); Some f)
+        in
+            if count < 1 then None else try 0
+        end
+
+    fun n_free_frames () = !free_count
+    fun n_free_bytes () = n_free_frames () * page_size
+
+    fun size () = !table_size
+    fun size_bytes () = size () * page_size
+end

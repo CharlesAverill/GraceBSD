@@ -59,11 +59,6 @@ structure Hw = struct
         load_entries 0
         end
 
-    fun print_memmap () =
-        List.app (fn (base, length, typ) =>
-            Render.println (Hex.padded_hex_str_of_int base 16 ^ " | " ^ Hex.padded_hex_str_of_int length 16 ^ " | " ^ string_of_mmap_entry_type typ)
-        ) mmap_entries
-
     (* Heap address *)
     val addr_heap : int = Bytes.call_field (fn b => #(cml_heap) "" b) 0
 
@@ -93,6 +88,24 @@ structure Hw = struct
         case Bytes.call_fields (fn b => #(stats) "" b) [] 3 of
           [ticks, queued, dropped] => (ticks, queued, dropped)
         | _ => Log.fatal Log.Rc_Error "stats: wrong field count"
+
+    (* Physical address of the current page table root *)
+    fun page_table_root () = X64.cr3_root (X64.read_cr3 ())
+
+    (* Switch to the page tables rooted at physical address [root] *)
+    fun set_page_table_root (root : int) = X64.load_cr3 root
+
+    (* Make the CPU forget any cached translation for the page containing
+       virtual address [addr] *)
+    fun flush_tlb_page (addr : int) = X64.invlpg addr
+
+    (* Physical and virtual base addresses, then virtual addresses of image, text,
+       rodata and data segments, end of image *)
+    val kernel_layout =
+        case Bytes.call_fields (fn b => #(kernel_layout) "" b) [] 7 of
+          [pbase, vbase, start, text, rodata, data, end_addr] =>
+            (pbase, vbase, start, text, rodata, data, end_addr)
+        | _ => Log.fatal Log.Rc_Init_Error "kernel_layout: wrong field count"
 
     (* Read [len] bytes from memory address [addr] *)
     fun mem_read (addr : int) (len : int) =

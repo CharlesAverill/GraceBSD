@@ -53,6 +53,10 @@ __attribute__((used, section(".limine_requests"))) static volatile struct limine
     .id = LIMINE_HHDM_REQUEST_ID, .revision = 0
 };
 
+// Request the kernel's physical and virtual base addresses
+__attribute__((used, section(".limine_requests"))) static volatile struct limine_executable_address_request
+    executable_address_request = { .id = LIMINE_EXECUTABLE_ADDRESS_REQUEST_ID, .revision = 0 };
+
 void hcf(void) {
     for (;;) {
         __asm__ volatile("hlt");
@@ -60,6 +64,8 @@ void hcf(void) {
 }
 
 uint64_t hhdm_off                                     = 0;
+uint64_t kernel_phys_base                             = 0;
+uint64_t kernel_virt_base                             = 0;
 LIMINE_PTR(struct limine_memmap_entry**) mmap_entries = NULL;
 size_t num_mmap_entries                               = 0;
 struct limine_framebuffer** framebuffers              = NULL;
@@ -171,6 +177,12 @@ void kmain(void) {
         fatal(RC_INIT_ERROR, "No HHDM response");
     }
     hhdm_off = hhdm_request.response->offset;
+
+    if (executable_address_request.response == NULL) {
+        fatal(RC_INIT_ERROR, "No executable address response");
+    }
+    kernel_phys_base = executable_address_request.response->physical_base;
+    kernel_virt_base = executable_address_request.response->virtual_base;
 
     cakeml_run(hhdm_off + largest_off, largest_len);
     info("Done running CakeML");

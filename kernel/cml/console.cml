@@ -11,16 +11,6 @@ structure Console = struct
                 Render.println (Int.toString n ^ "! = " ^ Int.toString (factorial n))
         | None => Render.println ("factorial: not a number: " ^ arg)
 
-    fun print_mem_read (addr : string) (len : string) =
-        case (Hex.int_of_str addr, Hex.int_of_str len) of
-          (Some a, Some n) =>
-            if a < 0 orelse n < 0 then
-                Render.println "read: addr and len must be non-negative"
-            else
-                Render.println (Hex.hex_string_of_w8_arr (Hw.mem_read a n))
-        | (None, _) => Render.println ("read: not a number: " ^ addr)
-        | (_, None) => Render.println ("read: not a number: " ^ len)
-
     fun pad_right pad_char target_len str =
         let
             val current_len = String.size str
@@ -30,6 +20,36 @@ structure Console = struct
             else
             str ^ String.implode (List.tabulate (target_len - current_len) (fn _ => pad_char))
         end
+
+    fun print_memmap () =
+        (Render.println (pad_right #" " 18 "Base Address" ^ " | " ^ pad_right #" " 18 "Length" ^ " | Type");
+         Render.println (pad_right #"-" (2 * 18 + 3 * 3 + 20) "");
+         List.app (fn (base, length, typ) =>
+             Render.println (Hex.padded_hex_str_of_int base 16 ^ " | " ^ Hex.padded_hex_str_of_int length 16 ^ " | " ^ Hw.string_of_mmap_entry_type typ)
+         ) Hw.mmap_entries)
+
+    fun print_frames () =
+        (Render.println (pad_right #" " 6 "" ^ " | " ^ pad_right #" " 12 "Frames" ^ " | " ^ pad_right #" " 12 "Bytes");
+         Render.println (pad_right #"-" (2 * 12 + 2 * 3 + 6) "");
+         Render.println (pad_right #" " 6 "Free" ^ " | " ^
+                         pad_right #" " 12 (Int.toString (FrameAllocator.n_free_frames ())) ^ " | " ^
+                         pad_right #" " 12 (Int.toString (FrameAllocator.n_free_bytes ())));
+         Render.println (pad_right #" " 6 "Used" ^ " | " ^
+                         pad_right #" " 12 (Int.toString (FrameAllocator.size () - FrameAllocator.n_free_frames ())) ^ " | " ^
+                         pad_right #" " 12 (Int.toString (FrameAllocator.size_bytes () - FrameAllocator.n_free_bytes ())));
+         Render.println (pad_right #" " 6 "Total" ^ " | " ^
+                         pad_right #" " 12 (Int.toString (FrameAllocator.size ())) ^ " | " ^
+                         pad_right #" " 12 (Int.toString (FrameAllocator.size_bytes ()))))
+
+    fun print_mem_read (addr : string) (len : string) =
+        case (Hex.int_of_str addr, Hex.int_of_str len) of
+          (Some a, Some n) =>
+            if a < 0 orelse n < 0 then
+                Render.println "read: addr and len must be non-negative"
+            else
+                Render.println (Hex.hex_string_of_w8_arr (Hw.mem_read a n))
+        | (None, _) => Render.println ("read: not a number: " ^ addr)
+        | (_, None) => Render.println ("read: not a number: " ^ len)
 
     (* zero-pad n in decimal *)
     fun pad_int (n : int) (w : int) =
@@ -69,12 +89,14 @@ structure Console = struct
 
     val commands = [
         ("memmap", "print out the memory map"),
+        ("frames", "print frame allocator information"),
         ("read <addr> <len>", "read len bytes from *addr"),
         ("uptime", "time since boot"),
         ("stats", "event and interrupt counters"),
         ("mandelbrot", "render the mandelbrot fractal"),
         ("factorial <n>", "compute n!"),
         ("greet <name>", "get greeted"),
+        ("clear", "clear the screen"),
         ("hcf", "halt and catch fire"),
         ("help", "show this message")
     ]
@@ -90,13 +112,15 @@ structure Console = struct
 
     fun prompt (s : string) =
         (case String.tokens (fn c => c = #" ") s of
-          ["memmap"] => Hw.print_memmap ()
+          ["memmap"] => print_memmap ()
+        | ["frames"] => print_frames ()
         | ["read", addr, len] => print_mem_read addr len
         | ["uptime"] => print_uptime ()
         | ["stats"] => print_stats ()
         | ["mandelbrot"] => Mandelbrot.render ()
         | ["factorial", arg] => print_factorial arg
         | ["greet", arg] => greet arg
+        | ["clear"] => (Framebuffer.clear_screen (); Render.place_cursor 0 0)
         | ["hcf"] => Hw.hcf ()
         | [] => ()
         | _ => print_help ();

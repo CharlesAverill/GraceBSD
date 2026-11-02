@@ -3,6 +3,7 @@
 #include "ps2.h"
 
 #include <stdint.h>
+#include <stddef.h>
 
 #include "io.h"
 #include "logging.h"
@@ -95,8 +96,7 @@ static bool write_config(uint8_t config) {
 }
 
 static void flush_output(void) {
-    while (inb(PS2_STATUS) & STATUS_OUTPUT_FULL)
-        inb(PS2_DATA);
+    while (inb(PS2_STATUS) & STATUS_OUTPUT_FULL) inb(PS2_DATA);
 }
 
 // Run an interface test command and check that the port passed
@@ -138,8 +138,7 @@ static bool reset_device(int port) {
     // Read the ID bytes so they don't reach the IRQ handler as scancodes
     int id[2]  = { 0, 0 };
     int id_len = 0;
-    while (id_len < 2 && (r = read_data(TIMEOUT)) >= 0)
-        id[id_len++] = r;
+    while (id_len < 2 && (r = read_data(TIMEOUT)) >= 0) id[id_len++] = r;
     if (id_len == 0)
         info("PS2: port %d device ready (no ID)", port);
     else if (id_len == 1)
@@ -153,35 +152,47 @@ bool ps2_init(void) {
     // TODO: Initialise USB Controllers
     // TODO: Determine if the PS2 Controller Exists
 
-    // Step 3: Disable Devices
-    if (!write_command(CMD_DISABLE_PORT1) || !write_command(CMD_DISABLE_PORT2)) {
-        warn("PS2: controller not responding");
-        return false;
-    }
+    // Try to init 100 times
+    int config;
+    int r;
+    size_t i;
+    for (i = 0; i < 100; i++) {
+        // Step 3: Disable Devices
+        if (!write_command(CMD_DISABLE_PORT1) || !write_command(CMD_DISABLE_PORT2)) {
+            warn("PS2: controller not responding");
+            continue;
+        }
 
-    // Step 4: Flush The Output Buffer
-    flush_output();
+        // Step 4: Flush The Output Buffer
+        flush_output();
 
-    // Step 5: Set the Controller Configuration Byte
-    int config = read_config();
-    if (config < 0) {
-        warn("PS2: could not read the configuration byte");
-        return false;
-    }
-    config &= ~(CONFIG_PORT1_IRQ | CONFIG_PORT1_CLOCK | CONFIG_TRANSLATE);
-    if (!write_config(config)) {
-        warn("PS2: could not write the configuration byte");
-        return false;
-    }
+        // Step 5: Set the Controller Configuration Byte
+        config = read_config();
+        if (config < 0) {
+            warn("PS2: could not read the configuration byte");
+            continue;
+        }
+        config &= ~(CONFIG_PORT1_IRQ | CONFIG_PORT1_CLOCK | CONFIG_TRANSLATE);
+        if (!write_config(config)) {
+            warn("PS2: could not write the configuration byte");
+            continue;
+        }
 
-    // Step 6: Perform Controller Self Test
-    int r = -1;
-    if (!write_command(CMD_SELF_TEST) || (r = read_data(TIMEOUT)) != SELF_TEST_PASSED) {
-        warn("PS2: controller self-test failed (0x%x)", r);
-        return false;
+        // Step 6: Perform Controller Self Test
+        r = -1;
+        if (!write_command(CMD_SELF_TEST) || (r = read_data(TIMEOUT)) != SELF_TEST_PASSED) {
+            warn("PS2: controller self-test failed (0x%x)", r);
+            continue;
+        }
+        if (!write_config(config)) {
+            warn("PS2: could not restore the configuration byte");
+            continue;
+        }
+
+        break;
     }
-    if (!write_config(config)) {
-        warn("PS2: could not restore the configuration byte");
+    if (i == 100) {
+        warn("PS2: failed to init after 100 attempts");
         return false;
     }
 

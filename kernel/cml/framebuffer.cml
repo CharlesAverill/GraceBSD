@@ -55,4 +55,7 @@ structure Framebuffer = struct
     fun fill_area (x : int) (y : int) (w : int) (h : int) =
         #(fill_framebuffer_area) ""
             (Bytes.buf_of_fields [address primary_fb, x, y, w, h] 5)
+
+    fun clear_screen () =
+        scroll_fb primary_fb (height primary_fb)
 end

@@ -1,6 +1,7 @@
-#include <stdint.h>
+#include "ffi.h"
 
 #include "cakeml.h"
+#include "cpu.h"
 #include "events.h"
 #include "fonts.h"
 #include "framebuffer.h"
@@ -11,13 +12,10 @@
 #include "tables/idt.h"
 #include "timers/pit.h"
 
-#define FFI(f) void ffi##f(unsigned char* command, long command_length, uint8_t* args, long args_length)
-
 FFI(serial_write) {
     serial_writen((char*)command, command_length);
 }
 
-#define SIZE_OF_INT64 8
 uint64_t uint64_of_bytes(unsigned char bytes[]) {
     uint64_t bits = 0;
     for (int i = SIZE_OF_INT64 - 1; i >= 0; i--) {
@@ -402,4 +400,20 @@ FFI(stats) {
     bytes_of_uint64(tick_counter, args);
     bytes_of_uint64(event_queue_length(), args + SIZE_OF_INT64);
     bytes_of_uint64(event_queue_dropped(), args + 2 * SIZE_OF_INT64);
+}
+
+#define KERNEL_LAYOUT_FIELDS 7
+FFI(kernel_layout) {
+    if (args_length != KERNEL_LAYOUT_FIELDS * SIZE_OF_INT64) {
+        error("FFI kernel_layout: expected %d fields", KERNEL_LAYOUT_FIELDS);
+        return;
+    }
+
+    bytes_of_uint64(kernel_phys_base, args);
+    bytes_of_uint64(kernel_virt_base, args + SIZE_OF_INT64);
+    bytes_of_uint64((uint64_t)kernel_start, args + 2 * SIZE_OF_INT64);
+    bytes_of_uint64((uint64_t)kernel_text_start, args + 3 * SIZE_OF_INT64);
+    bytes_of_uint64((uint64_t)kernel_rodata_start, args + 4 * SIZE_OF_INT64);
+    bytes_of_uint64((uint64_t)kernel_data_start, args + 5 * SIZE_OF_INT64);
+    bytes_of_uint64((uint64_t)kernel_end, args + 6 * SIZE_OF_INT64);
 }
