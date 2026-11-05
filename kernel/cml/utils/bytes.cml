@@ -106,4 +106,27 @@ structure Bytes = struct
             Word8.toInt (Word8Array.sub arr idx) :: int_list_of_w8_array_aux arr (idx + 1)
 
     fun int_list_of_w8_array (arr : byte_array) = int_list_of_w8_array_aux arr 0
+
+    fun bool_of_bit (b : Word64.word) = b <> Word64.fromInt 0
+    fun bit_of_bool (b : bool) = if b then Word64.fromInt 1 else Word64.fromInt 0
+
+    fun bit_n_64 (b : Word64.word) (n : int) =
+        if Word64.andb b (Word64.<< (Word64.fromInt 1) n) = Word64.fromInt 0 then
+            Word64.fromInt 0
+        else
+            Word64.fromInt 1
+
+    (* n^x *)
+    fun int_pow (n : int) (x : int) =
+        case x of
+          0 => 1
+        | 1 => n
+        | x => n * int_pow n (x - 1)
+
+    (* A word with bits [low, high] set *)
+    fun mask64 (low : int) (high : int) =
+        Word64.<< (Word64.fromInt ((int_pow 2 (high - low + 1)) - 1)) low
+
+    fun bits64_in_range_inclusive (b : Word64.word) (low : int) (high : int) =
+        Word64.>> (Word64.andb b (mask64 low high)) low
 end

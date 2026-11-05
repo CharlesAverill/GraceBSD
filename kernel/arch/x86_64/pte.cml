@@ -1,0 +1,56 @@
+(* Page Table Entries *)
+structure PTE = struct
+    (* P, R/W, U/S, PWT, PCD, A, D, PS, G, NX, next address *)
+    datatype t =
+        MakePTE bool bool bool bool bool
+                bool bool bool bool bool
+                int
+
+    (* https://wiki.osdev.org/Paging#64-Bit_Paging *)
+    val levels = 4
+    val entry_size = 8
+    val entries_per_table = 512
+
+    fun present (MakePTE p _ _ _ _ _ _ _ _ _ _)    = p
+    fun rw      (MakePTE _ rw _ _ _ _ _ _ _ _ _)   = rw
+    fun us      (MakePTE _ _ us _ _ _ _ _ _ _ _)   = us
+    fun pwt     (MakePTE _ _ _ pwt _ _ _ _ _ _ _)  = pwt
+    fun pcd     (MakePTE _ _ _ _ pcd _ _ _ _ _ _)  = pcd
+    fun a       (MakePTE _ _ _ _ _ a _ _ _ _ _)    = a
+    fun d       (MakePTE _ _ _ _ _ _ d _ _ _ _)    = d
+    fun ps      (MakePTE _ _ _ _ _ _ _ ps _ _ _)   = ps
+    val pat                                        = ps
+    fun g       (MakePTE _ _ _ _ _ _ _ _ g _ _)    = g
+    fun nx      (MakePTE _ _ _ _ _ _ _ _ _ nx _)   = nx
+    fun next    (MakePTE _ _ _ _ _ _ _ _ _ _ next) = next
+
+    val addr_mask = Bytes.mask64 12 51
+
+    (* https://wiki.osdev.org/X86_Paging#Page_Map_Table_Entries *)
+    fun pte_of_word64 (n : Word64.word) =
+        MakePTE (Bytes.bool_of_bit (Bytes.bit_n_64 n 0))
+                (Bytes.bool_of_bit (Bytes.bit_n_64 n 1))
+                (Bytes.bool_of_bit (Bytes.bit_n_64 n 2))
+                (Bytes.bool_of_bit (Bytes.bit_n_64 n 3))
+                (Bytes.bool_of_bit (Bytes.bit_n_64 n 4))
+                (Bytes.bool_of_bit (Bytes.bit_n_64 n 5))
+                (Bytes.bool_of_bit (Bytes.bit_n_64 n 6))
+                (Bytes.bool_of_bit (Bytes.bit_n_64 n 7))
+                (Bytes.bool_of_bit (Bytes.bit_n_64 n 8))
+                (Bytes.bool_of_bit (Bytes.bit_n_64 n 63))
+                (Word64.toInt (Word64.andb n addr_mask))
+
+    fun word64_of_pte (MakePTE p rw us pwt pcd a d ps g nx next) =
+        let
+            val flags = [(p, 0), (rw, 1), (us, 2), (pwt, 3), (pcd, 4),
+                         (a, 5), (d, 6), (ps, 7), (g, 8), (nx, 63)]
+            val addr = Word64.andb (Word64.fromInt next) addr_mask
+        in
+            List.foldl (fn (v, i) => fn w =>
+                Word64.orb w (Word64.<< (Bytes.bit_of_bool v) i)
+            ) addr flags
+        end
+
+    fun pte_of_int (n : int) = pte_of_word64 (Word64.fromInt n)
+    fun int_of_pte (e : t) = Word64.toInt (word64_of_pte e)
+end

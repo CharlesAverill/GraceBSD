@@ -41,6 +41,38 @@ structure Console = struct
                          pad_right #" " 12 (Int.toString (FrameAllocator.size ())) ^ " | " ^
                          pad_right #" " 12 (Int.toString (FrameAllocator.size_bytes ()))))
 
+    (* Print the entry used at each level to translate [vaddr], then the result *)
+    fun pt (vaddr : int) =
+        let
+            val root = Hw.page_table_root ()
+            fun flag (b : bool) (c : string) = if b then c else "-"
+            fun row (level : int) (e : Paging.entry) =
+                Render.println ("L" ^ Int.toString level ^ " [" ^
+                    pad_right #" " 3 (Int.toString (Paging.index_of vaddr level)) ^ "] " ^
+                    (if Paging.leaf e then "page  " else "table ") ^
+                    Hex.padded_hex_str_of_int (Paging.address e) 16 ^ " " ^
+                    flag (Paging.writable e) "w" ^ flag (Paging.user e) "u" ^
+                    flag (Paging.executable e) "x" ^ flag (Paging.global e) "g")
+            fun aux (level : int) =
+                case Paging.walk_stop level root vaddr of
+                  None => Render.println ("L" ^ Int.toString level ^ " [" ^
+                              Int.toString (Paging.index_of vaddr level) ^ "] not present")
+                | Some (paddr, e, size) =>
+                    (row level e;
+                     if Paging.leaf e then
+                         Render.println (Hex.hex_str_of_int vaddr ^ " -> " ^ Hex.hex_str_of_int paddr ^
+                             " (" ^ Int.toString (size div 1024) ^ " KiB page)")
+                     else aux (level - 1))
+        in
+            Render.println ("page table at " ^ Hex.padded_hex_str_of_int root 16);
+            aux Paging.levels
+        end
+
+    fun print_pt (addr : string) =
+        case Hex.int_of_str addr of
+          Some a => if a < 0 then Render.println "pt: addr must be non-negative" else pt a
+        | None => Render.println ("pt: not a number: " ^ addr)
+
     fun print_mem_read (addr : string) (len : string) =
         case (Hex.int_of_str addr, Hex.int_of_str len) of
           (Some a, Some n) =>
@@ -91,6 +123,7 @@ structure Console = struct
         ("memmap", "print out the memory map"),
         ("frames", "print frame allocator information"),
         ("read <addr> <len>", "read len bytes from *addr"),
+        ("pt <addr>", "translate a virtual address"),
         ("uptime", "time since boot"),
         ("stats", "event and interrupt counters"),
         ("mandelbrot", "render the mandelbrot fractal"),
@@ -115,6 +148,7 @@ structure Console = struct
           ["memmap"] => print_memmap ()
         | ["frames"] => print_frames ()
         | ["read", addr, len] => print_mem_read addr len
+        | ["pt", addr] => print_pt addr
         | ["uptime"] => print_uptime ()
         | ["stats"] => print_stats ()
         | ["mandelbrot"] => Mandelbrot.render ()

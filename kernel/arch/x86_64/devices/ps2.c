@@ -2,8 +2,8 @@
 
 #include "ps2.h"
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "io.h"
 #include "logging.h"
