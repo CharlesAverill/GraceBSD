@@ -28,9 +28,6 @@ structure Paging = struct
 
     val empty = Entry False False False False False False False False 0
 
-    (* Bit 7 means "huge page" only above level 1. At level 1 it is PAT, and every
-       present entry is a leaf. In a huge-page entry, bit 12 is PAT rather than
-       part of the address, so the address is rounded down to the page size *)
     fun entry_of_pte (level : int) (e : PTE.t) =
         let
             val is_leaf = PTE.present e andalso (level = 1 orelse PTE.ps e)
@@ -59,9 +56,23 @@ structure Paging = struct
     fun write_entry (table : int) (level : int) (index : int) (e : entry) =
         Hw.pmem_write64 (table + index * PTE.entry_size) (PTE.int_of_pte (pte_of_entry level e))
 
-    (* Translate [vaddr] through the tables rooted at [root] into its physical
-       address, its leaf entry, and the size of the page it lies in. Stop early
-       at level [stop]
+    (* An intermediate entry pointing to the table at [addr] *)
+    fun table_entry (addr : int) = Entry True True True True False False False False addr
+
+    (* Allocate a zeroed frame for a new table *)
+    fun new_table () =
+        case FrameAllocator.alloc () of
+          None => None
+        | Some frame =>
+            let
+                val addr = frame * page_size
+            in
+                Hw.pmem_write addr (Word8Array.array page_size (Word8.fromInt 0));
+                Some addr
+            end
+
+    (* Read entry [index] of the [level] table at physical address [table], with the
+       physical address [vaddr] translates to through it and the span it covers
        
        https://github.com/mit-pdos/xv6-riscv/blob/4f2fc8b7bd47d737b1d9ac9e68e407fc7cdd1cad/kernel/vm.c#L86 *)
     fun walk_step (table : int) (level : int) (vaddr : int) =
@@ -71,19 +82,104 @@ structure Paging = struct
         (e, level - 1, address e + vaddr mod entry_span level, entry_span level)
         end
 
-    fun walk_stop (stop : int) (root : int) (vaddr : int) =
+    (* Translate [vaddr] through the tables rooted at [root], stopping at the first
+       leaf or at level [stop], into the table holding the entry, the entry, the
+       physical address [vaddr] translates to, and the span of the entry *)
+    fun walk_stop (stop : int) (root : int) (vaddr : int) (alloc : bool) =
         let
             fun aux (table : int) (level : int) =
                 let
                     val (e, level', paddr, size) = walk_step table level vaddr
                 in
-                if not (present e) then None
-                else if leaf e orelse stop = level then Some (paddr, e, size)
-                else aux (address e) (level - 1)
+                if leaf e orelse stop = level then
+                    (if present e orelse alloc then Some (table, e, paddr, size) else None)
+                else if present e then aux (address e) level'
+                else if not alloc then None
+                else
+                    case new_table () of
+                      None => None
+                    | Some t =>
+                        (write_entry table level (index_of vaddr level) (table_entry t);
+                         aux t level')
                 end
         in
             aux root levels
         end
 
-    fun walk (root : int) (vaddr : int) = walk_stop 1 root vaddr
+    fun walk (root : int) (vaddr : int) = walk_stop 1 root vaddr False
+
+    (* Map the page at [vaddr] to [paddr] by walking the table to find a new frame
+       with the right size *)
+    fun map (root : int) (vaddr : int) (paddr : int) (level : int) (w : bool) (u : bool) (x : bool) =
+        case walk_stop level root vaddr True of
+          None => Log.fatal Log.Rc_Memory_Error "map: out of frames"
+        | Some (table, e, pa, size) =>
+            if present e then
+                (if pa = paddr andalso size >= entry_span level then ()
+                 else Log.fatal Log.Rc_Memory_Error ("map: already mapped elsewhere: " ^ Hex.hex_str_of_int vaddr))
+            else write_entry table level (index_of vaddr level)
+                    (Entry True w u x False False False True paddr)
+
+    (* Map [len] bytes from [vaddr] to [paddr] with 4 KiB pages *)
+    fun map_pages (root : int) (vaddr : int) (paddr : int) (len : int) (w : bool) (x : bool) =
+        Loops.for 0 ((len + page_size - 1) div page_size - 1) (fn i =>
+            map root (vaddr + i * page_size) (paddr + i * page_size) 1 w False x)
+
+    (* Map the kernel image *)
+    fun map_kernel_image (root : int) =
+        case Hw.kernel_layout of
+          (pbase, vbase, start, text, rodata, data, end_addr) =>
+            let
+                fun section (first : int) (last : int) (w : bool) (x : bool) =
+                    map_pages root first (pbase + (first - vbase)) (last - first) w x
+            in
+                section start text True False;
+                section text rodata False True;
+                section rodata data False False;
+                section data end_addr True False
+            end
+
+    (* Map physical [base, base + len) into the HHDM as RW,NX. Use huge pages where possible *)
+    fun map_physical (root : int) (base : int) (len : int) =
+        let
+            val huge = entry_span 2
+            val last = (base + len + page_size - 1) div page_size * page_size
+            fun aux (c : int) =
+                if c >= last then ()
+                else if c mod huge = 0 andalso c + huge <= last then
+                    (map root (Hw.hhdm_off + c) c 2 True False False; aux (c + huge))
+                else
+                    (map root (Hw.hhdm_off + c) c 1 True False False; aux (c + page_size))
+        in
+            aux (base - base mod page_size)
+        end
+
+    (* Root of the kernel's page tables, once [init] has built them *)
+    val kernel_root = Ref ~1
+
+    fun new_table_err () =
+        case new_table () of
+          None => Log.fatal Log.Rc_Memory_Error "Failed to create page table"
+        | Some table => table
+
+    (* Initialize the page table with a root that allocates pages for the kernel,
+       so that processes can refer to the root page table to have a mapping to the
+       kernel without rebuilding the table. Then, map the kernel image into the HHDM *)
+    fun init () =
+        let
+            val root = new_table_err ()
+        in
+            Loops.for (entries_per_table div 2) (entries_per_table - 1) (fn i =>
+                write_entry root levels i (table_entry (new_table_err ())));
+            map_kernel_image root;
+            List.app (fn (base, len, typ) =>
+                case typ of
+                  Hw.Reserved => ()
+                | Hw.BadMemory => ()
+                | _ => map_physical root base len
+            ) Hw.mmap_entries;
+            kernel_root := root
+        end
 end
+(* I hate this file I hope I never have to touch it ever again
+   - Charles, 11/5/26 *)

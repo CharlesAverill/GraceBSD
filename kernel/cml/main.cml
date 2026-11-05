@@ -7,6 +7,9 @@ val memory_top =
         | _ => top
     ) 0 Hw.mmap_entries
 
+(* End of low memory *)
+val low_top = 0x100000
+
 fun main () =
     (* Build the page table allocator from the memory map *)
     (FrameAllocator.init memory_top;
@@ -17,6 +20,10 @@ fun main () =
      ) Hw.mmap_entries;
      (* Re-reserve the CakeML heap and stack *)
      FrameAllocator.reserve_range Hw.paddr_heap (Hw.heap_size + Hw.stack_size);
+     (* Re-reserve low memory *)
+     FrameAllocator.reserve_range 0 low_top;
+     (* Build the page table *)
+     Paging.init ();
      Console.run ());
 
 fun dispatch (job_id : int) =

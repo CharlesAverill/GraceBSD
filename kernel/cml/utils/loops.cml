@@ -1,0 +1,22 @@
+structure Loops = struct
+    fun while (condition : unit -> bool) (body : unit -> unit) =
+        if condition () then
+            (body ();
+             while condition body)
+        else
+            ()
+
+    fun for (low : int) (high : int) (body : int -> unit) =
+        if low <= high then
+            (body low;
+             for (low + 1) high body)
+        else
+            ()
+
+    fun for_downto (high : int) (low : int) (body : int -> unit) =
+        if high >= low then
+            (body high;
+             for_downto (high - 1) low body)
+        else
+            ()
+end

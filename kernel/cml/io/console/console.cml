@@ -54,10 +54,10 @@ structure Console = struct
                     flag (Paging.writable e) "w" ^ flag (Paging.user e) "u" ^
                     flag (Paging.executable e) "x" ^ flag (Paging.global e) "g")
             fun aux (level : int) =
-                case Paging.walk_stop level root vaddr of
+                case Paging.walk_stop level root vaddr False of
                   None => Render.println ("L" ^ Int.toString level ^ " [" ^
                               Int.toString (Paging.index_of vaddr level) ^ "] not present")
-                | Some (paddr, e, size) =>
+                | Some (_, e, paddr, size) =>
                     (row level e;
                      if Paging.leaf e then
                          Render.println (Hex.hex_str_of_int vaddr ^ " -> " ^ Hex.hex_str_of_int paddr ^
