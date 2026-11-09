@@ -164,7 +164,8 @@ structure Paging = struct
 
     (* Initialize the page table with a root that allocates pages for the kernel,
        so that processes can refer to the root page table to have a mapping to the
-       kernel without rebuilding the table. Then, map the kernel image into the HHDM *)
+       kernel without rebuilding the table. Then, map the kernel image into the HHDM
+       and set the page table root via CR3 *)
     fun init () =
         let
             val root = new_table_err ()
@@ -178,7 +179,8 @@ structure Paging = struct
                 | Hw.BadMemory => ()
                 | _ => map_physical root base len
             ) Hw.mmap_entries;
-            kernel_root := root
+            kernel_root := root;
+            Hw.set_page_table_root (!kernel_root)
         end
 end
 (* I hate this file I hope I never have to touch it ever again
