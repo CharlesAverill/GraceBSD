@@ -31,6 +31,9 @@ struct interrupt_frame {
     uint64_t rip, cs, rflags, rsp, ss;
 };
 
+// Current Privelege Level is the bottom two bits of the CS register
+#define CPL(frame) ((frame).cs & 0b11)
+
 #define IDT_MAX_DESCRIPTORS 48
 
 void exception_handler(struct interrupt_frame* frame);
